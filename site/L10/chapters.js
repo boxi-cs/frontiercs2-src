@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L10-${k}.mp4"></div>` });
 const fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const SLUG = "crest";
@@ -29,7 +32,12 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to flip a branch?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L10-1.mp4": "Part 1 of 3 · Concolic testing: flip one condition · 4 min · narrated by Boxi Yu",
+    "media/L10-2.mp4": "Part 2 of 3 · Search strategies: which condition to flip next · 5 min · narrated by Boxi Yu",
+    "media/L10-3.mp4": "Part 3 of 3 · The task: a strategy for CREST · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -40,6 +48,7 @@ const CHAPTERS = [
     tags: ["concolic testing", "path constraint", "constraint solving", "random testing"],
     hero: "code:solve", heroCaption: "Flip one condition: keep the prefix, negate, solve",
     sections: [
+      video(1, "Concolic testing: flip one condition", "Part 1 of 3 of this lecture's video: concolic testing: flip one condition."),
       { id: "idea", title: "Concrete and symbolic", html: `
         <p><b>Concolic</b> testing (concrete + symbolic) runs a program on real inputs and, at the same time, records every condition along the path that depended on those inputs. The conjunction of those conditions is the run's <b>path constraint</b>: any input that satisfies it takes the same path. To reach new code, keep the first <code>k</code> conditions, negate condition <code>k</code>, and ask a solver for inputs that satisfy the result. The next run follows the old path up to condition <code>k</code> and then takes the other side.</p>
         <p>FrontierCS 2 has one Software Engineering task, <b>CREST</b>, from Burnim and Sen's paper <em>Heuristics for Scalable Dynamic Test Generation</em> (ASE 2008). A real program has far more paths than any testing budget, so the <b>search strategy</b>, the rule that picks which condition to flip next, decides how much of the program gets tested. The task removes CREST's strategies; the agent writes one. With one task, this lecture goes deeper than the others. The Python programs are ours; every output shown is the real output.</p>` },
@@ -67,6 +76,7 @@ const CHAPTERS = [
     tags: ["path explosion", "bounded DFS", "random branch search", "control-flow graph", "CfgDirectedSearch"],
     hero: "code:race", heroCaption: "Four strategies, 20 seeds, 100 runs",
     sections: [
+      video(2, "Search strategies: which condition to flip next", "Part 2 of 3 of this lecture's video: search strategies: which condition to flip next."),
       { id: "paths", title: "Paths, not branches", html: `
         <p>Every run takes one path. Unbounded depth-first search explores every feasible path exactly once:</p>
         ${code("paths")}
@@ -107,6 +117,7 @@ const CHAPTERS = [
     tags: ["Host interface", "4,000 iterations", "search overhead", "pass margin"],
     hero: "code:score", heroCaption: "The score and the margin",
     sections: [
+      video(3, "The task: a strategy for CREST", "Part 3 of 3 of this lecture's video: the task: a strategy for CREST."),
       { id: "writes", title: "What the agent writes", html: `
         <p>The task keeps CREST: the CIL instrumentation, the concolic library, the solver and the harness. Its search strategies are removed and replaced by an interface. The agent writes one strategy class in <code>src/frontier_solution/</code>; the starter only restarts on random inputs, like our <code>random_testing</code>. The strategy drives a run through a <code>Host</code>:</p>
         <ul><li><code>Restart()</code> runs the program on fresh random inputs (one iteration).</li>
