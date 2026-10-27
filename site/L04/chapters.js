@@ -32,9 +32,9 @@ const LECTURE = {
   minutes: "About 60 minutes",
   subtitles: ["en"],
   videos: {
-    "media/L04-1.mp4": "Part 1 of 3 · BBQ · 5 min · narrated by Boxi Yu",
-    "media/L04-2.mp4": "Part 2 of 3 · MetaOpt · 3 min · narrated by Boxi Yu",
-    "media/L04-3.mp4": "Part 3 of 3 · Shockwave · 4 min · narrated by Boxi Yu",
+    "media/L04-1.mp4": "Part 1 of 3 · BBQ: a faster clock for a packet queue · 5 min · narrated by Boxi Yu",
+    "media/L04-2.mp4": "Part 2 of 3 · MetaOpt: traffic that defeats a heuristic · 3 min · narrated by Boxi Yu",
+    "media/L04-3.mp4": "Part 3 of 3 · Shockwave: sharing GPUs fairly · 4 min · narrated by Boxi Yu",
   },
 };
 
