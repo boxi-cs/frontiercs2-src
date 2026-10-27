@@ -26,8 +26,8 @@ reference patches.
 again in every run, so its row on a task page is the median of those runs, and a run passes or fails
 against the reference of its own run. In the ParButterfly table, the reference took 1,950 ms,
 2,000 ms and 1,580 ms in the runs of GPT-6 Astra, GPT-6.1 Sol and Muse Spark 1.3, against about
-170 ms in most runs; we quote the site as it is. The toy sizes (40 keys, 80 points, 9 vertices,
-80-vertex graphs) are ours.
+170 ms in most runs; we quote the site as it is. The toy sizes (40 keys, 80 points, 9 vertices, a
+2,000-vertex random hypergraph, 80-vertex graphs) are ours.
 :::
 
 # Learning objectives {.unnumbered}
@@ -215,7 +215,7 @@ the swaps of a node, and updating the graph after a swap is done. All swaps retu
 concurrently, so no array position may appear in two of them.
 
 Each submission sorts twelve arrays: unsigned 32-bit keys or key–payload records, uniform, skewed,
-repeated or nearly sorted, from 2.4 to 3.2 million elements, plus two arrays of 16 million keys. On
+repeated or nearly sorted: eight arrays of 2.4 to 3.2 million elements, plus four arrays of 16 million keys. On
 four cores, a pass needs three things on **every** array: a lower median sort time than the
 reference, a lower median time inside the region-graph code, and extra memory of at most 5% of the
 input, the bound the paper states. The score rewards speed over `std::sort`, the serial sort of the
@@ -258,7 +258,7 @@ best run about 11.5 times.
 | Step 5 Preview | 700 | 2.56 | 18.5 | 51.1 | Pass |
 | Claude Opus 5.5 | 780 | 2.79 | 20.3 | 49.8 | Fail |
 
-Means over the twelve hidden arrays, as of October 26, 2026. Two of sixteen models passed, and nine
+Selected rows; the full table is on the task page. Means over the twelve hidden arrays, as of October 26, 2026. Two of sixteen models passed, and nine
 scored above the reference. RegionsSort has an FDI of 60.5, the 18th hardest of 48 tasks.
 
 Every one of the sixteen runs beat the reference's region-graph time on all twelve arrays, most by
@@ -269,7 +269,7 @@ eleven of twelve arrays and failed. Claude Opus 5.5 was faster on seven.
 
 Claude Opus 5.5 planned one bucket at a time, as in our model: it paired every key of the bucket held
 elsewhere with every misplaced slot of the bucket's own interval, took 2-cycles first, filled the
-rest in address order, and fused swaps that continue each other into one. Its own step was to
+rest in address order, and fused swaps that continue each other into one. Its last step was to
 **defer the graph updates**: the ranges that the swaps leave in other countries are recorded only
 after the caller has started sorting the finished bucket, in small per-bucket lists, and large
 scratch buffers are freed, which keeps the extra memory low.
@@ -443,7 +443,7 @@ times in the table below are means over all twelve sets, so the large ones domin
 | Claude Opus 5.5 | 35.3 | 72.5 | Pass |
 | GLM 5.3 Flash | 46.8 | 68.8 | Pass |
 
-Means over the twelve hidden sets, as of October 26, 2026. Six of sixteen models passed. The FDI is
+Selected rows; the full table is on the task page. Means over the twelve hidden sets, as of October 26, 2026. Six of sixteen models passed. The FDI is
 42.1, the 34th hardest of 48.
 
 The two best scores failed: Gemini 4 Argon · Antigravity and GLM 5.3 were faster than the reference
@@ -599,7 +599,7 @@ vertex.
 
 Each submission runs on four random hypergraphs from the framework's own generator, with hundreds of
 thousands of vertices and hyperedges and millions of memberships: two public, two held out. The
-time is the whole process, from launch through loading the file. The score is
+time is the whole process, from launch to exit, loading the file included. The score is
 `100 · e^(−t / 0.25)` for a median time `t` in seconds. To pass, the run must be at least 3% faster
 than the reference on every hypergraph, twice: on eight threads, and on **one** thread. The
 one-thread time is the paper's T₁, the total work, so the task checks work-efficiency directly.
@@ -616,11 +616,12 @@ one-thread time is the paper's T₁, the total work, so the task checks work-eff
 | Claude Opus 5.5 | 176 | 541 | 49.7 | Pass |
 | GLM 5.3 | 213 | 648 | 43.1 | Fail |
 
-Means over the four hidden hypergraphs, as of October 26, 2026. Eight of sixteen models passed;
+Selected rows; the full table is on the task page. Means over the four hidden hypergraphs, as of October 26, 2026. Eight of sixteen models passed;
 Gemini 4 Argon · Antigravity had the best score and passed. The FDI is 38.7, the 35th hardest.
 
-Every run with a valid result beat the reference on one thread on all four hypergraphs. The
-failures came from eight threads: Muse Wonder 1.0 and Step 5 Preview won one of four, GLM 5.3 none.
+Every run with a valid result beat the reference on one thread on all four hypergraphs. All six
+failures with a valid result came from eight threads; for example Muse Wonder 1.0 and Step 5 Preview
+won one of four, GLM 5.3 none.
 Two runs, GLM 5.3 Flash and Muse Spark 1.3, scored 0.
 
 **Claude Opus 5.5** passed with a score below the reference's, because the reference took 197 ms in
@@ -629,7 +630,7 @@ each live hyperedge touching the leaving vertices is handled once, by its lowest
 member, which decrements the others. *Pull*: the leaving vertices mark their hyperedges dead, and
 every remaining vertex recounts its live hyperedges. *Fix*: when few vertices remain, only those are
 recounted. A cost model picks the cheapest from the frontier size, the level and the average sizes.
-Its own idea was **ownership instead of atomics**: each thread owns aligned blocks of 64 vertices and
+It also used **ownership instead of atomics**: each thread owns aligned blocks of 64 vertices and
 of the dead-hyperedge bitmap, and in parallel push rounds threads send kills and decrements to the
 owner as messages, so no atomic operation touches the hot arrays.
 
@@ -741,8 +742,8 @@ skewed: 5109 butterflies by brute force
 ```
 
 Every order finds the same count. On the uniform graph, one side order is cheapest. On the skewed
-graph, degree order processes 44% fewer wedges than the best side order, because the hubs never
-serve as centers. The work is the number of wedges; the order is a choice of algorithm, made before
+graph, degree order processes 44% fewer wedges than the best side order, because the hubs seldom
+serve as centers: a hub is a center only for wedges whose endpoint is an even bigger hub. The work is the number of wedges; the order is a choice of algorithm, made before
 any thread starts.
 
 ## What the agent writes, and how it is judged
@@ -781,7 +782,7 @@ The reference counts 3.4 times faster than the serial baseline; the best run, 19
 | Kimi K3 | 154 | 37.5 | Pass |
 | GLM 5.3 | — | 0.0 | Fail |
 
-Means over the eight hidden graphs, as of October 26, 2026; every count was 2.73 × 10⁹ on average,
+Selected rows; the full table is on the task page. Means over the eight hidden graphs, as of October 26, 2026; every valid count was 2.73 × 10⁹ on average,
 the same as the reference's. Fifteen of sixteen models passed, and fifteen scored above the
 reference. GLM 5.3 had no valid result. With an FDI of −11.2, ParButterfly is the easiest task of
 the benchmark.
@@ -806,7 +807,7 @@ so the few hubs seldom serve as centers, and low-degree vertices use 8-bit count
    Hygra checks it directly with a one-thread time.
 2. *Every workload counts.* The best scores on RegionsSort and Parallel DBSCAN failed, each on one
    of twelve inputs.
-3. *A margin is relative to its own run.* The reference is timed again in every run. On Hygra and
+3. *A pass is decided in its own run.* The reference is timed again in every run. On Hygra and
    Parallel DBSCAN, runs passed with scores below the reference's row.
 :::
 

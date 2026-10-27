@@ -116,8 +116,8 @@ branch ids. That is how loops look to a concolic tester.
 
 Our solver is the simplest one that works: it changes only the inputs that the negated condition
 reads, plus any input tied to them by an earlier condition, and tries every value from 0 to 15 in
-order. The real CREST does the same narrowing ("incremental solving") before calling the Yices
-solver. Here we negate condition 3, `not x2 == x1 + 4`. The earlier condition `x1 == 7` reads `x1`,
+order. CREST narrows in the same way: its `YicesSolver::IncrementalSolve`, which the task's harness
+calls, keeps the old inputs and solves only the constraints linked to the negated one. Here we negate condition 3, `not x2 == x1 + 4`. The earlier condition `x1 == 7` reads `x1`,
 so `x1` is tied in and must stay 7:
 
 ```python
@@ -209,7 +209,7 @@ random inputs, of 100,000: {'x1 == 7': 385, 'x2 == x1 + 4': 35, 'x3 > 13': 2}
 ```
 
 For a random input, `x3 > 13` holds at the end of that chain with chance 2 in 65,536 (two of
-100,000 here); concolic testing needed five runs.
+100,000 here, against about 3 expected); concolic testing needed five runs.
 
 # Search strategies
 
@@ -312,7 +312,9 @@ Random testing never gets past the equality checks.
 
 The classic concolic strategy (DART, CUTE) is depth-first search. CREST's **BoundedDFS** explores
 every path that differs from the first run in at most `depth` negations, in depth-first order. The
-task's score uses it, with depth 12, as its baseline.
+task's score uses it, with depth 12, as its baseline. (Ours is simplified: CREST's version also
+counts sibling flips against the bound, and does not restart. In our toy neither changes the
+result.)
 
 ```python
 def bounded_dfs(t, depth=12):
@@ -340,9 +342,12 @@ bounded DFS, 100 runs: 14 14 14 14 branches
 its 100 runs took 6 different paths through the header
 ```
 
-Depth-first search flips the last conditions first. Here those are the payload loop's, so it spends
-its budget on the 64 ways through the loop: 100 runs, 6 header paths, 14 branches. On grep the
-paper's DFS also did worst of all the strategies it tried (Figure 2).
+Depth-first search dives once along the path, flipping each condition in turn, and then always
+backtracks to the most recent fork first. On every path the last six forks are the payload loop's,
+so after one dive through the header it spends the rest of the budget on the 64 ways through the
+loop: 100 runs, 6 header paths, 14 branches. On grep, the paper's DFS and random testing were both
+beaten by the CFG-directed and random searches (Section 5.3, Figure 2), and its depth-12 DFS stopped
+after fewer than 2¹² iterations, since some runs had fewer than 12 feasible conditions.
 
 ## Random branch search
 
@@ -423,14 +428,17 @@ distances: [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
 The check matters: the graph must allow every step a real run takes, or the distances lie. After one
-run of all zeros, branch 4 (`x0 == 3`) is uncovered (distance 0), and branch 5, its other side, is 1
-step from it.
+run of all zeros, the run took branch 5 (`not x0 == 3`). Its other side, branch 4, is uncovered
+(distance 0), so it is a first flip CFG-directed search can try. Branch 5 itself is 1 step from the
+uncovered branch 12 (`x1 > x2`).
 
 **CfgDirectedSearch** negates the condition whose other side is closest to uncovered code. It adds
 to the distance `tries`, how often that side was already forced without finding anything new, so a
 close but hopeless target sinks in the ranking. A run with new coverage becomes the current run; a
-run of failed attempts triggers a restart. (The paper also follows the static path after a
-successful flip, "SearchAlongPath"; ours just ranks again.)
+run of failed attempts triggers a restart. (Two simplifications: the paper also follows the
+static path after a successful flip, "SearchAlongPath", where ours just ranks again; and CREST's
+code forgets its coverage on every restart, so its distances point to branches not covered in the
+current epoch, where ours use the whole session's coverage.)
 
 ```python
 def cfg_directed(t, patience=10):
@@ -498,8 +506,9 @@ random branch     8.00  10.95  14.50  16.90     94.15
 CFG-directed     16.15  20.15  20.45  20.55     56.60
 ```
 
-The order matches the paper's grep plot: CFG-directed first, random branch catching up, random
-testing and DFS last. CFG-directed search also asks the solver less often than random branch
+The final order matches the paper's grep plot: CFG-directed and random branch ahead, random
+testing and DFS behind. In the paper random branch search also rose fast from the start; ours starts
+slowly because six of every path's conditions are payload checks. CFG-directed search also asks the solver less often than random branch
 search, because it skips conditions whose other side leads nowhere new. That second number matters
 in the task, where solver time counts against the strategy.
 
@@ -514,8 +523,10 @@ The strategy drives a run through a `Host`:
 
 - `Restart()` runs the program on fresh random inputs (one iteration).
 - `Negate(e, k)` keeps the first `k` constraints of execution `e`, negates constraint `k`, solves,
-  and runs the program. An infeasible request returns `NULL` and costs no iteration. The new run
-  does not always follow the predicted path; the strategy must compare the paths.
+  and runs the program. An infeasible request returns `NULL` and costs no iteration. (The harness
+  rejects some requests without a solver attempt: when an earlier constraint of the path is
+  identical to constraint `k`.) The new run does not always follow the predicted path; the strategy
+  must compare the paths.
 - `Release(e)` gives an execution back; at most 64 may be held.
 
 The strategy sees each execution's path of branch ids and which positions are constraints, and the
@@ -523,7 +534,8 @@ program's static description: the branch ids, `paired[b]` (the other arm), `func
 `successors[b]`, the branch-level control-flow graph, as in our `SUCC`. It never sees the
 constraints, the inputs or the solver. Branch ids are relabelled with a secret permutation in every
 run, so nothing can be tuned to one program's ids. The code runs in a sandbox with no files, clock,
-network or randomness other than `Host::Random()`.
+network, environment or child processes, and no randomness other than `Host::Random()` and
+`Host::Uniform(n)`.
 
 ## How it is judged
 
@@ -538,7 +550,8 @@ requests) end a run early but keep it valid.
 The **score**, averaged over the programs, is `100 × max(0, C − B) / (T − B)`, where `C` is the
 mean coverage over 30 seeds, `B` the mean coverage of bounded DFS with depth 12, and `T` the
 program's number of branches. It uses no reference measurement and ignores overhead. It is far below
-100 for any strategy, because much of a program cannot be reached from one entry point.
+100 for any realistic strategy, because much of a program is unreachable from one entry point within
+the budget.
 
 **Pass rule.** The judge runs the candidate and the reference, the paper's CFG-directed search, on
 the same 30 seeds of each program, interleaved on the same machine. On **every** program the
@@ -561,16 +574,17 @@ def margin(s):
 
 print(f"grep 2.2: B = 1057, T = 3982; covering 1,500 scores {task_score(1500, 1057, 3982):.1f}")
 print(f"margin = {margin(1):.4f} * s")
-print(f"Vim 5.7 coverage margin +209 means s = {209 / margin(1):.0f} branches per seed")
+print(f"GPT-6.1 Terra's run: Vim 5.7 coverage margin +209, so s = {209 / margin(1):.0f} branches per seed")
 ```
 
 ```{.text .output}
 grep 2.2: B = 1057, T = 3982; covering 1,500 scores 15.1
 margin = 0.7746 * s
-Vim 5.7 coverage margin +209 means s = 270 branches per seed
+GPT-6.1 Terra's run: Vim 5.7 coverage margin +209, so s = 270 branches per seed
 ```
 
-The margin is about 0.77 standard deviations of one seed. Because `s` includes the candidate's own
+The margin is about 0.77 standard deviations of one seed. Margins differ from run to run: the 16
+runs' Vim coverage margins on the task page range from +102 to +335. Because `s` includes the candidate's own
 spread, a noisy strategy needs a bigger win.
 
 # What the agents did
@@ -621,7 +635,8 @@ Claude Opus 5.5
 ```
 
 GPT-6.1 Terra covered 1,230 more Vim branches than the reference, and its Vim overhead cleared by
-0.4 s, but on sed it spent 1.6 s more than the reference. Claude Opus 5.5 lost the other way: faster
+about 0.4 s, but on sed it spent about 1.6 s more than the reference (both from the page's rounded
+figures; the judge compares whole milliseconds). Claude Opus 5.5 lost the other way: faster
 than the reference on Vim, but not by the 26.3 s needed. Five runs cleared three of the four rules
 (also GPT-6.1 Sol, DeepSeek V4.1 Flash 1017 and Step 5 Preview); none cleared all four.
 
@@ -719,8 +734,8 @@ reference. A strategy that spends less time searching usually finds less.
 
 ## Exercises
 
-1. Start the walk from `[0] * 12` but flip the *last* failed check first. How many runs does it take
-   to reach `x3 > 13`?
+1. Change the walk to always flip the *last* condition of the path (a payload check). How many
+   runs does it take to reach `x3 > 13`, and why?
 2. Move the payload loop to the start of `program` (and update `SUCC`). How does bounded DFS do now,
    and why?
 3. Change `x4 > 7` to `x4 > 6`. Which strategies find branch 20, and after how many runs?
@@ -728,3 +743,84 @@ reference. A strategy that spends less time searching usually finds less.
    CFG-directed search.
 5. A candidate covers 8,000 Vim branches with a per-seed spread of 300; the reference covers 7,700
    with a spread of 240. Does it clear the coverage rule?
+
+## Solutions
+
+Exercise 1: it never gets there. The last condition is always `x11 == 0`, so each flip changes only
+`x11`, and the header never changes.
+
+Exercises 2, 3 and 5: the two changed programs, run under the same seeds as the race, and the margin
+of Exercise 5:
+
+```python
+def mean_at(strategy, n):
+    total = 0
+    for seed in range(1, 21):
+        total += session(strategy, 100, seed).curve[n - 1]
+    return total / 20
+
+
+def program_loop_first(x, t):
+    """Exercise 2: the same parser, with the payload loop first."""
+    for i in range(6, 12):
+        t.cond(0, (i,), lambda v, i=i: v[i] == 0, f"x{i} == 0")
+    program_header(x, t)
+
+
+def program_header(x, t, limit=7):
+    if t.cond(1, (0,), lambda v: v[0] < 8, "x0 < 8"):
+        if t.cond(2, (0,), lambda v: v[0] == 3, "x0 == 3"):
+            if t.cond(3, (1,), lambda v: v[1] == 7, "x1 == 7"):
+                if t.cond(4, (1, 2), lambda v: v[2] == v[1] + 4, "x2 == x1 + 4"):
+                    t.cond(5, (3,), lambda v: v[3] > 13, "x3 > 13")
+        else:
+            t.cond(6, (1, 2), lambda v: v[1] > v[2], "x1 > x2")
+    elif t.cond(7, (0,), lambda v: v[0] == 12, "x0 == 12"):
+        if t.cond(8, (3, 4), lambda v: v[3] == 2 * v[4], "x3 == 2*x4"):
+            if t.cond(9, (5,), lambda v: v[5] == 15, "x5 == 15"):
+                t.cond(10, (4,), lambda v: v[4] > limit, f"x4 > {limit}")
+
+
+def program_six(x, t):
+    """Exercise 3: x4 > 6 instead of x4 > 7."""
+    program_header(x, t, limit=6)
+    for i in range(6, 12):
+        t.cond(0, (i,), lambda v, i=i: v[i] == 0, f"x{i} == 0")
+
+
+def succ_loop_first(b):
+    return [0, 1, 2, 3] if b < 2 else SUCC.get(b, [])
+
+
+original, original_succ = program, succ
+before = mean_at(bounded_dfs, 25)
+program, succ = program_loop_first, succ_loop_first
+dfs25, cfg100 = mean_at(bounded_dfs, 25), mean_at(cfg_directed, 100)
+print(f"Exercise 2: DFS after 25 runs {before:.2f} -> {dfs25:.2f}; CFG-directed after 100 runs {cfg100:.2f}")
+program, succ = program_six, original_succ
+for name, strategy in STRATEGIES.items():
+    first = []
+    for seed in range(1, 21):
+        paths = session(strategy, 100, seed).paths
+        hit = [i + 1 for i, p in enumerate(paths) if 20 in p]
+        if hit:
+            first.append(hit[0])
+    mean = f", mean first run {sum(first) / len(first):.1f}" if first else ""
+    print(f"Exercise 3, {name}: branch 20 found in {len(first)} of 20 sessions{mean}")
+program = original
+s5 = sqrt((300 ** 2 + 240 ** 2) / 2)
+print(f"Exercise 5: s = {s5:.1f}, margin = {margin(s5):.1f}, gain 300")
+```
+
+```{.text .output}
+Exercise 2: DFS after 25 runs 13.55 -> 21.00; CFG-directed after 100 runs 20.20
+Exercise 3, random testing: branch 20 found in 0 of 20 sessions
+Exercise 3, bounded DFS: branch 20 found in 8 of 20 sessions, mean first run 21.8
+Exercise 3, random branch: branch 20 found in 5 of 20 sessions, mean first run 55.4
+Exercise 3, CFG-directed: branch 20 found in 16 of 20 sessions, mean first run 14.1
+Exercise 5: s = 271.7, margin = 210.4, gain 300
+```
+
+With the loop first, DFS backtracks to the deepest forks first, and those are now the header's, so
+it covers every reachable branch. Where the path explosion sits decides how DFS does. With
+`x4 > 6`, the input `x3 = 14, x4 = 7` reaches branch 20. In Exercise 5 the gain of 300 clears the margin of 210.4.

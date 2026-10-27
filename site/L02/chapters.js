@@ -55,7 +55,7 @@ const CHAPTERS = [
         <p>The first swap, <code>(10, 2, 2)</code>, is a 2-cycle: two 0s at positions 10–11 trade places with two 1s at 2–3. The last bucket needs no swaps: once the other three are complete, it is too. Then the sort recurses into each country with the next digit.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task keeps the sorter, the executor that performs the swaps, and the recursion. It removes the bodies of the region-graph planner in <code>EdgeListGraph</code>: turning two edges into one swap, extracting the swaps of a node, and updating the graph after a swap is done. All swaps returned in one call run concurrently, so no array position may appear in two of them.</p>
-        <p>Each submission sorts twelve arrays: unsigned 32-bit keys or key–payload records, uniform, skewed, repeated or nearly sorted, from 2.4 to 3.2 million elements, plus two arrays of 16 million keys. On four cores, a pass needs three things on <b>every</b> array: a lower median sort time than the reference, a lower median time inside the region-graph code, and extra memory of at most 5% of the input, the bound the paper states. The score rewards speed over <code>std::sort</code>, the serial sort of the C++ library, through a geometric-mean speedup <code>S</code> on the eight original arrays. ParButterfly uses the same formula.</p>
+        <p>Each submission sorts twelve arrays: unsigned 32-bit keys or key–payload records, uniform, skewed, repeated or nearly sorted: eight arrays of 2.4 to 3.2 million elements, plus four arrays of 16 million keys. On four cores, a pass needs three things on <b>every</b> array: a lower median sort time than the reference, a lower median time inside the region-graph code, and extra memory of at most 5% of the input, the bound the paper states. The score rewards speed over <code>std::sort</code>, the serial sort of the C++ library, through a geometric-mean speedup <code>S</code> on the eight original arrays. ParButterfly uses the same formula.</p>
         ${code("score")}
         <p>A tenfold speedup scores 50. The reference sorts about ten times faster than <code>std::sort</code>, and the best run about 11.5 times.</p>` },
       { id: "agents", title: "What the agents did", html: `
@@ -66,9 +66,9 @@ const CHAPTERS = [
         <tr><td>GLM 5.3</td><td>700</td><td>2.66</td><td>18.5</td><td>51.1</td><td>${pass}</td></tr>
         <tr><td>Step 5 Preview</td><td>700</td><td>2.56</td><td>18.5</td><td>51.1</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>780</td><td>2.79</td><td>20.3</td><td>49.8</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the twelve hidden arrays, as of October 26, 2026. Two of sixteen passed; nine scored above the reference. <a href="${TASK}regionssort" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; the full table is on the task page. Means over the twelve hidden arrays, as of October 26, 2026. Two of sixteen passed; nine scored above the reference. <a href="${TASK}regionssort" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Every one of the sixteen runs beat the reference's region-graph time on all twelve arrays, most by a factor of two or more. The pass was decided by the whole sort. The planner is a small part of a sort call: the reference spends about 6 ms in it, summed over four workers, in a call that takes about 19 ms. Gemini 4 Argon · Antigravity, with the best score, was faster than the reference on eleven of twelve arrays and failed. Claude Opus 5.5 was faster on seven.</p>
-        <p><b>Claude Opus 5.5</b> planned one bucket at a time, as in our model: it paired every key of the bucket held elsewhere with every misplaced slot of the bucket's own interval, took 2-cycles first, filled the rest in address order, and fused swaps that continue each other into one. Its own step was to <b>defer the graph updates</b>: the ranges that the swaps leave in other countries are recorded only after the caller has started sorting the finished bucket, in small per-bucket lists, and large scratch buffers are freed, which keeps the extra memory low.</p>
+        <p><b>Claude Opus 5.5</b> planned one bucket at a time, as in our model: it paired every key of the bucket held elsewhere with every misplaced slot of the bucket's own interval, took 2-cycles first, filled the rest in address order, and fused swaps that continue each other into one. Its last step was to <b>defer the graph updates</b>: the ranges that the swaps leave in other countries are recorded only after the caller has started sorting the finished bucket, in small per-bucket lists, and large scratch buffers are freed, which keeps the extra memory low.</p>
         ${callout("pitfall", "A FASTER PART IS NOT A FASTER WHOLE", "<p>Making the removed component twice as fast left the sort within a few percent of the reference, where small effects decide each array. The two passing runs won all twelve arrays with mean sort times of 18.5 ms.</p>")}` },
     ],
     takeaways: ["Misplaced ranges form a regions graph.", "A 2-path gives one swap; a bucket's swaps run at once.", "Pass = faster sort on all twelve arrays."],
@@ -106,7 +106,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Terra</td><td>29.3</td><td>73.7</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>35.3</td><td>72.5</td><td>${pass}</td></tr>
         <tr><td>GLM 5.3 Flash</td><td>46.8</td><td>68.8</td><td>${pass}</td></tr></table>
-        <p class="meta">Means over the twelve hidden sets, as of October 26, 2026. Six of sixteen passed. <a href="${TASK}parallel-dbscan" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; the full table is on the task page. Means over the twelve hidden sets, as of October 26, 2026. Six of sixteen passed. <a href="${TASK}parallel-dbscan" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>The two best scores failed: Gemini 4 Argon · Antigravity and GLM 5.3 were faster than the reference on eleven of twelve sets. <b>Claude Opus 5.5</b> passed. It used a lock-free union-find: threads merge components with atomic compare-and-swap, linking a root to the smaller index. It checks cell pairs in three phases, nearest neighbors first (cells that differ by one in a single coordinate), then diagonal neighbors, then cells further away but still within reach of ε.</p>
         <p>Each test stops early: one representative core point from each cell, then a few point pairs, and only then an exhaustive check of the points near the other cell's bounding box, with the reference's own arithmetic so the result matches exactly. Its own idea: the far candidates come from a trie over cell coordinates, each trie node records the component its whole subtree shares, and a subtree already in the querying cell's component is skipped.</p>
         ${callout("pitfall", "A PASS IS DECIDED IN ITS OWN RUN", "<p>GLM 5.3 Flash scored 68.8, below the reference's 71.7 in the table, and passed. Its mean time, 46.8 ms, is above the table's 46.4, but the reference measured in its own run took 53.4 ms, and GLM 5.3 Flash was faster on all twelve sets. The score is absolute; the pass compares two programs on the same machine at the same time.</p>")}` },
@@ -135,7 +135,7 @@ const CHAPTERS = [
         ${code("big")}` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task removes the whole body of <code>KCore</code>. The agent gets the hypergraph in both directions (each vertex's hyperedges and each hyperedge's vertices) and must return the exact core number of every vertex.</p>
-        <p>Each submission runs on four random hypergraphs from the framework's own generator, with hundreds of thousands of vertices and hyperedges and millions of memberships: two public, two held out. The time is the whole process, from launch through loading the file. The score is <code>100 · e<sup>−t / 0.25</sup></code> for a median time <code>t</code> in seconds. To pass, the run must be at least 3% faster than the reference on every hypergraph, twice: on eight threads, and on <b>one</b> thread. The one-thread time is the paper's T<sub>1</sub>, the total work, so the task checks work-efficiency directly.</p>` },
+        <p>Each submission runs on four random hypergraphs from the framework's own generator, with hundreds of thousands of vertices and hyperedges and millions of memberships: two public, two held out. The time is the whole process, from launch to exit, loading the file included. The score is <code>100 · e<sup>−t / 0.25</sup></code> for a median time <code>t</code> in seconds. To pass, the run must be at least 3% faster than the reference on every hypergraph, twice: on eight threads, and on <b>one</b> thread. The one-thread time is the paper's T<sub>1</sub>, the total work, so the task checks work-efficiency directly.</p>` },
       { id: "agents", title: "What the agents did", html: `
         <table><tr><th>Run</th><th>Run time (ms)</th><th>Sequential run time (ms)</th><th>Final score</th><th></th></tr>
         <tr><td>Human reference</td><td>164</td><td>639</td><td>52.2</td><td></td></tr>
@@ -145,10 +145,10 @@ const CHAPTERS = [
         <tr><td>Step 5 Preview</td><td>141</td><td>574</td><td>56.8</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>176</td><td>541</td><td>49.7</td><td>${pass}</td></tr>
         <tr><td>GLM 5.3</td><td>213</td><td>648</td><td>43.1</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the four hidden hypergraphs, as of October 26, 2026. Eight of sixteen passed. FDI 38.7. <a href="${TASK}hygra" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p>Every run with a valid result beat the reference on one thread on all four hypergraphs. The failures came from eight threads: Muse Wonder 1.0 and Step 5 Preview won one of four, GLM 5.3 none. Two runs, GLM 5.3 Flash and Muse Spark 1.3, scored 0.</p>
+        <p class="meta">Selected rows; the full table is on the task page. Means over the four hidden hypergraphs, as of October 26, 2026. Eight of sixteen passed. FDI 38.7. <a href="${TASK}hygra" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p>Every run with a valid result beat the reference on one thread on all four hypergraphs. All six failures with a valid result came from eight threads; for example Muse Wonder 1.0 and Step 5 Preview won one of four, GLM 5.3 none. Two runs, GLM 5.3 Flash and Muse Spark 1.3, scored 0.</p>
         <p><b>Claude Opus 5.5</b> passed with a score below the reference's, because the reference took 197 ms in its run. It peels level by level, as in our model, and runs each round in one of three ways. <em>Push</em>: each live hyperedge touching the leaving vertices is handled once, by its lowest-numbered leaving member, which decrements the others. <em>Pull</em>: the leaving vertices mark their hyperedges dead, and every remaining vertex recounts its live hyperedges. <em>Fix</em>: when few vertices remain, only those are recounted. A cost model picks the cheapest from the frontier size, the level and the average sizes.</p>
-        <p>Its own idea was <b>ownership instead of atomics</b>: each thread owns aligned blocks of 64 vertices and of the dead-hyperedge bitmap, and in parallel push rounds threads send kills and decrements to the owner as messages, so no atomic operation touches the hot arrays.</p>
+        <p>It also used <b>ownership instead of atomics</b>: each thread owns aligned blocks of 64 vertices and of the dead-hyperedge bitmap, and in parallel push rounds threads send kills and decrements to the owner as messages, so no atomic operation touches the hot arrays.</p>
         ${callout("pitfall", "WORK-EFFICIENT IS NOT ENOUGH", "<p>All fourteen runs with a valid result beat the reference on one thread on every hypergraph. Only eight also beat it on eight threads on every hypergraph, which the pass needs too.</p>")}` },
     ],
     takeaways: ["Core number = deepest k-core that holds the vertex.", "Buckets: linear work, no rescans.", "Pass on eight threads and on one."],
@@ -168,9 +168,9 @@ const CHAPTERS = [
         ${code("wedges")}
         <p>The paper's rule, which the task's comparison code applies: count the wedges <code>w_s</code> of the better side order and <code>w_r</code> of degree order, and use side order when <code>(w_s − w_r) / w_s &lt; 0.1</code>.</p>
         ${code("orders")}
-        ${predict("On the skewed graph, a few left and right vertices have very high degree. Which order should process the fewest wedges?", "<p>Degree order: 1,348 wedges against 2,410 for the best side order. The hubs are ranked first, so they are endpoints and never centers.</p>")}
+        ${predict("On the skewed graph, a few left and right vertices have very high degree. Which order should process the fewest wedges?", "<p>Degree order: 1,348 wedges against 2,410 for the best side order. The hubs are ranked first, so they are endpoints and seldom centers.</p>")}
         ${demo("butterfly", "Demo 4 · Wedges by vertex order", "choose a graph and an order", "Amber bars mark the side whose vertices are the centers.")}
-        <p>Every order finds the same count. On the uniform graph, one side order is cheapest. On the skewed graph, degree order processes 44% fewer wedges than the best side order, because the hubs never serve as centers. The work is the number of wedges; the order is a choice of algorithm, made before any thread starts.</p>` },
+        <p>Every order finds the same count. On the uniform graph, one side order is cheapest. On the skewed graph, degree order processes 44% fewer wedges than the best side order, because the hubs seldom serve as centers: a hub is a center only for wedges whose endpoint is an even bigger hub. The work is the number of wedges; the order is a choice of algorithm, made before any thread starts.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task removes <code>CountTotal</code>, the routine that returns the exact total. The command line names a ranking and a way of grouping wedges, but only the count is checked, so the agent may choose its own order and aggregation. The comparison is the authors' parallel code with the rule above and their simple batching.</p>
         <p>There are eight graphs with about two million edges each, 18,000 to 23,000 vertices on one side and 20,000 to 25,000 on the other: six with uniform degrees and two with heavy tails on both sides, where the largest hubs have 14,000 to 19,000 neighbors. On four threads, the count must be exact on every graph, and the median of 31 paired time ratios must show the agent's code <b>more than 5% faster</b> than the comparison on every graph. The score is the speedup score of RegionsSort, against a frozen serial baseline, on the uniform graphs only.</p>
@@ -185,7 +185,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Terra</td><td>37.8</td><td>54.1</td><td>${pass}</td></tr>
         <tr><td>Kimi K3</td><td>154</td><td>37.5</td><td>${pass}</td></tr>
         <tr><td>GLM 5.3</td><td>—</td><td>0.0</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the eight hidden graphs, as of October 26, 2026; every count was 2.73 × 10<sup>9</sup> on average, the same as the reference's. Fifteen of sixteen passed. <a href="${TASK}parbutterfly" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; the full table is on the task page. Means over the eight hidden graphs, as of October 26, 2026; every valid count was 2.73 × 10<sup>9</sup> on average, the same as the reference's. Fifteen of sixteen passed. <a href="${TASK}parbutterfly" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Fifteen models scored above the reference; GLM 5.3 had no valid result. With an FDI of −11.2, ParButterfly is the easiest task of the benchmark. The best runs counted about six times faster than the reference (29.1 ms against 165 ms in Gemini 4 Argon · Antigravity's run).</p>
         <p><b>Claude Opus 5.5</b> chose a strategy per graph. It takes the side with fewer wedges; on skewed graphs it also counts the wedges of a degree order and picks the cheaper by a cost model. In side order, for every neighbor, the smaller endpoints form a prefix of that neighbor's sorted list, and a small per-thread counter collects the shared neighbors of each pair, adding <code>c(c − 1)/2</code>.</p>
         <p>Neighbor lists are copied once into fixed-width slots of 16-bit ids, so vector instructions find and copy a prefix without branches; each thread times two forms of its counting loop on its first chunks and keeps the faster. On skewed graphs it ranks by degree, as in our model, so the few hubs seldom serve as centers, and low-degree vertices use 8-bit counters.</p>` },
@@ -204,7 +204,7 @@ const CHAPTERS = [
         <div class="card"><h3>Parallel DBSCAN</h3><ul><li>Cells of side ε/√d</li><li>Union-find over core cells</li><li>6 of 16 passed</li></ul></div>
         <div class="card"><h3>Hygra</h3><ul><li>Peeling gives core numbers</li><li>Buckets keep the work linear</li><li>8 of 16 passed</li></ul></div>
         <div class="card"><h3>ParButterfly</h3><ul><li>Wedges grouped by endpoints</li><li>Degree order on skewed graphs</li><li>15 of 16 passed</li></ul></div></div>
-        ${callout("pattern", "THREE LESSONS FROM THE HPC TASKS", "<p><b>Work first, then threads.</b> Each paper is about doing less total work in parallel: swaps planned from a graph, a grid instead of all pairs, buckets instead of rescans, an order with fewer wedges. Hygra checks it directly with a one-thread time.</p><p><b>Every workload counts.</b> The best scores on RegionsSort and Parallel DBSCAN failed, each on one of twelve inputs.</p><p><b>A margin is relative to its own run.</b> The reference is timed again in every run. On Hygra and Parallel DBSCAN, runs passed with scores below the reference's row.</p>")}` },
+        ${callout("pattern", "THREE LESSONS FROM THE HPC TASKS", "<p><b>Work first, then threads.</b> Each paper is about doing less total work in parallel: swaps planned from a graph, a grid instead of all pairs, buckets instead of rescans, an order with fewer wedges. Hygra checks it directly with a one-thread time.</p><p><b>Every workload counts.</b> The best scores on RegionsSort and Parallel DBSCAN failed, each on one of twelve inputs.</p><p><b>A pass is decided in its own run.</b> The reference is timed again in every run. On Hygra and Parallel DBSCAN, runs passed with scores below the reference's row.</p>")}` },
       { id: "check", title: "Check your understanding", html: `<div data-demo="quiz"><div class="demo-body"></div></div>` },
       { id: "exercises", title: "Exercises", html: `
         <p>The exercises use the programs from the notes. Copy them from the earlier chapters and run them with Python 3.</p>
@@ -219,10 +219,10 @@ const CHAPTERS = [
         <details class="reveal"><summary>Solution</summary><p>72 core points in 4 clusters; the grid needs 82 tests, against 1,911 for the plain algorithm. Bigger cells hold more points, so fewer cells need linking.</p></details>
         <h3>Exercise 4 ★★ (by hand)</h3>
         <p>In Hygra's small hypergraph, add the hyperedge {4, 5}. Which core numbers change?</p>
-        <details class="reveal"><summary>Solution</summary><p>None. Vertex 7 still leaves at level 1, which drops vertex 6 to degree 2; at level 2, vertex 6 leaves and kills {4, 5, 6} and {5, 6}, so 4 and 5 fall to degree 2 and leave at level 2 too.</p></details>
+        <details class="reveal"><summary>Solution</summary><p>None. Vertex 7 still leaves at level 1, which drops vertex 6 to degree 2; at level 2, vertex 6 leaves and kills {4, 5, 6} and {5, 6}, so 4 and 5 fall to degree 2 or less and leave at level 2 too.</p></details>
         <h3>Exercise 5 ★★ (think)</h3>
         <p>Why does degree order help on the skewed graph and not on the uniform one? Count the wedges a single vertex of degree 40 would produce as a center.</p>
-        <details class="reveal"><summary>Solution</summary><p>40 · 39 / 2 = 780 wedges, from one vertex. Degree order makes hubs endpoints, so they never serve as centers. On the uniform graph all degrees are alike, so no order avoids much work, and here degree order processes more wedges than the better side order.</p></details>` },
+        <details class="reveal"><summary>Solution</summary><p>40 · 39 / 2 = 780 wedges, from one vertex. Degree order makes hubs endpoints, so they seldom serve as centers. On the uniform graph all degrees are alike, so no order avoids much work, and here degree order processes more wedges than the better side order.</p></details>` },
       { id: "reading", title: "Papers and further reading", html: `
         <ul><li>O. Obeya, E. Kahssay, E. Fan, J. Shun. <em>Theoretically-Efficient and Practical Parallel In-Place Radix Sorting.</em> SPAA 2019. <a href="https://people.csail.mit.edu/jshun/RegionsSort.pdf" target="_blank" rel="noopener">PDF</a></li>
         <li>Y. Wang, Y. Gu, J. Shun. <em>Theoretically-Efficient and Practical Parallel DBSCAN.</em> SIGMOD 2020. <a href="https://doi.org/10.1145/3318464.3380582" target="_blank" rel="noopener">doi:10.1145/3318464.3380582</a></li>
@@ -236,18 +236,18 @@ const CHAPTERS = [
 
 const QUIZ = [
   { q: "In the regions graph, what does an edge <code>i -> j</code> of weight <code>w</code> mean?",
-    opts: ["Bucket i is w keys larger than bucket j", "w keys in country i belong to bucket j", "Blocks i and j share w keys", "w swaps run between i and j"],
-    a: 1, why: "Country i is the interval bucket i will occupy; the edge counts the keys of bucket j sitting there." },
+    opts: ["Bucket i is w keys larger than bucket j", "Blocks i and j share w keys", "w keys in country i belong to bucket j", "w swaps run between i and j"],
+    a: 2, why: "Country i is the interval bucket i will occupy; the edge counts the keys of bucket j sitting there." },
   { q: "Why are DBSCAN's grid cells of side ε/√d?",
-    opts: ["So that each cell holds minPts points", "So that the cell's diagonal is ε, and any two points in one cell are neighbors", "So that cells never touch", "So that each cell is one cluster"],
-    a: 1, why: "A cell's diagonal is side · √d = ε. A cell with at least minPts points is all core, with no distance test." },
+    opts: ["So that the cell's diagonal is ε, and any two points in one cell are neighbors", "So that each cell holds minPts points", "So that cells never touch", "So that each cell is one cluster"],
+    a: 0, why: "A cell's diagonal is side · √d = ε. A cell with at least minPts points is all core, with no distance test." },
   { q: "Hygra's task measures time on one thread as well as eight. What does the one-thread time measure?",
-    opts: ["The time to load the file", "The total work, T<sub>1</sub>", "The span", "The memory used"],
-    a: 1, why: "On one thread, the run does all its work alone: the paper's T<sub>1</sub>. A work-efficient algorithm keeps it low." },
+    opts: ["The time to load the file", "The span", "The memory used", "The total work, T<sub>1</sub>"],
+    a: 3, why: "On one thread, the run does all its work alone: the paper's T<sub>1</sub>. A work-efficient algorithm keeps it low." },
   { q: "Two vertices on one side share 4 neighbors. How many butterflies have both as endpoints?",
     opts: ["4", "6", "8", "16"],
     a: 1, why: "Any two of the 4 wedges form a butterfly: 4 · 3 / 2 = 6." },
   { q: "On Parallel DBSCAN, GLM 5.3 Flash scored 68.8, below the reference's 71.7, and passed. How?",
-    opts: ["The pass ignores the large sets", "The pass compares it with the reference timed in its own run, which was slower there", "Its score was rounded down", "The reference failed a correctness check"],
-    a: 1, why: "In its run the reference averaged 53.4 ms, and GLM 5.3 Flash was faster on all twelve sets. The score uses a fixed anchor, not the reference." },
+    opts: ["The pass ignores the large sets", "Its score was rounded down", "The pass compares it with the reference timed in its own run, which was slower there", "The reference failed a correctness check"],
+    a: 2, why: "In its run the reference averaged 53.4 ms, and GLM 5.3 Flash was faster on all twelve sets. The score uses a fixed anchor, not the reference." },
 ];

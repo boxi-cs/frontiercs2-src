@@ -71,19 +71,19 @@ function demoMargin(el) {
       <label>PSNR <input class="ps" type="range" min="28.5" max="31" step="0.1" value="30.4"><b class="mono vp"></b></label>
       <label>margin <select class="mg"><option>0.96</option><option>0.98</option><option>1.00</option></select></label>
     </div><div class="stats"></div><div class="msg"></div>
-    <p class="hint">Reference: latency 100, PSNR 30.0 dB. The 0.5 dB quality band is our example; each task page lists its real rules.</p>`;
+    <p class="hint">Reference: latency 100, PSNR 30.0 dB. The 0.25 dB PSNR margin is SVG-EAR's; the real rule also checks SSIM and LPIPS.</p>`;
   const draw = () => {
     const lat = +el.querySelector(".lat").value, ps = +el.querySelector(".ps").value, mg = +el.querySelector(".mg").value;
     el.querySelector(".vl").textContent = lat.toFixed(1);
     el.querySelector(".vp").textContent = ps.toFixed(1);
-    const okL = lat <= mg * 100, okP = ps >= 30 - 0.5;
+    const okL = lat <= mg * 100, okP = ps >= 30 - 0.25;
     el.querySelector(".stats").innerHTML = `
       <div class="stat ${okL ? "good" : "bad"}"><small>latency ≤ ${(mg * 100).toFixed(0)}</small><b>${okL ? "beat" : "miss"}</b></div>
-      <div class="stat ${okP ? "good" : "bad"}"><small>PSNR ≥ 29.5</small><b>${okP ? "beat" : "miss"}</b></div>`;
+      <div class="stat ${okP ? "good" : "bad"}"><small>PSNR ≥ 29.75</small><b>${okP ? "beat" : "miss"}</b></div>`;
     const msg = el.querySelector(".msg"), ok = okL && okP;
     msg.className = `msg ${ok ? "good" : "bad"}`;
     msg.textContent = ok ? "Pass on this workload. A task repeats these checks on every hidden workload." :
-      `Fail. ${!okL ? `${(100 - lat).toFixed(1)}% faster is not enough; the rule asks for ${((1 - mg) * 100).toFixed(0)}%. ` : ""}${!okP ? "The quality dropped more than the band allows." : ""}`;
+      `Fail. ${!okL ? (lat >= 100 ? `It is not faster than the reference; the rule asks for at most ${(mg * 100).toFixed(0)}. ` : `${(100 - lat).toFixed(1)}% faster is not enough; the rule asks for ${((1 - mg) * 100).toFixed(0)}%. `) : ""}${!okP ? "The quality dropped more than the band allows." : ""}`;
   };
   el.querySelectorAll("input, select").forEach((i) => { i.oninput = draw; i.onchange = draw; });
   draw();
@@ -120,7 +120,7 @@ function demoFit(el) {
   const draw = () => {
     const [ability, difficulty] = fitTable(table, "Model Z");
     const tasks = difficulty.map((_, t) => `T${t + 1}`);
-    el.querySelector(".fit-grid").innerHTML = `<table class="fit"><tr><th></th>${tasks.map((t, i) => `<th>${t}<small>FDI ${difficulty[i].toFixed(1)}</small></th>`).join("")}<th>ability</th></tr>
+    el.querySelector(".fit-grid").innerHTML = `<table class="fit"><tr><th></th>${tasks.map((t, i) => `<th>${t}<small>difficulty ${difficulty[i].toFixed(1)}</small></th>`).join("")}<th>ability</th></tr>
       ${Object.entries(table).map(([m, row]) => `<tr><th>${m}</th>${row.map((v, t) => `<td><button class="fit-cell ${v ? "p" : "m"}" data-m="${m}" data-t="${t}" aria-label="${m} ${tasks[t]} ${v ? "pass" : "miss"}">${v ? "pass" : "miss"}</button></td>`).join("")}<td class="mono"><b>${ability[m].toFixed(1)}</b></td></tr>`).join("")}</table>`;
     const lo = Math.min(...Object.values(ability), ...difficulty), hi = Math.max(...Object.values(ability), ...difficulty);
     const pos = (v) => (100 * (v - lo)) / (hi - lo || 1);

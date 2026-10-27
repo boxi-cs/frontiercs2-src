@@ -61,7 +61,7 @@ voice/L04-test.lines.json  a 26-second voice test; audio in voice/out/ (not in g
 
 Preview: the `frontiercs2-site` launch config (port 8402); the built site: `frontiercs2-publish-preview` (8403).
 
-## v1.0 (the first mature version)
+## v1.0 (the first mature version) — released 2026-10-27
 
 1. All 14 lectures published.
 2. Each lecture reviewed by an independent reviewer that did not write it: every result number
@@ -107,3 +107,9 @@ All 14 lectures are published. Fixes are welcome: open an issue or a pull reques
   parallel sessions from LECTURE_BRIEF.md and re-checked before release.
 - 2026-10-27: L06, L07, L08, L09, L10, L12 and L13 published: all 14 lectures are live. Every
   task's pass count, best score and reference score was compared with its task page.
+- 2026-10-27: **v1.0.** Each lecture reviewed by an independent reviewer (reports in
+  `build/reviews/`, not in git); every must-fix and nearly every should-fix item fixed by the
+  lecture's author. Course-wide: selected-row captions, quiz answers in mixed positions, full model
+  names, previous/next links, time and pass rate on the cards, an About page. All 48 tasks
+  re-compared with the site (unchanged; leaderboard still dated October 26, 2026). Full site check
+  at 375 px and 1200 px: no overflow, no errors, every demo renders. Tag `v1.0`.

@@ -57,7 +57,9 @@ print(tasks, "tasks in", len(FIELDS), "fields;", MODELS * tasks, "runs, one per 
 
 Each model runs in its own agent harness: Claude Opus 5.5 in Claude Code, GPT-6 models in Codex
 CLI, Gemini 4 Argon in Antigravity and in Pi, and so on. So a leaderboard row is a model *and* its
-harness. A private set of more than 100 further tasks is kept back, to be announced later.
+harness. The harness matters: under Pi, the provider's content filter refused a request and Pi ended
+the run in 10 of Gemini 4 Argon's 48 runs, while Antigravity retries refused requests. A private set
+of more than 100 further tasks is kept back, to be announced later.
 
 # How a task is built
 
@@ -112,15 +114,15 @@ for the whole pass check.
 A run **passes** only when its final submission beats the human reference on every metric the task
 checks and on every hidden workload. The criteria are set from the reference's own measurements,
 and some ask for a margin. For SVG-EAR, a video model's sparse attention, the latency must be at most
-0.96 of the reference's, and three image-quality measures (PSNR, SSIM, LPIPS) must stay within fixed
-bands.
+0.96 of the reference's, and three image-quality measures must stay within small margins of the
+reference's scores: PSNR at most 0.25 dB lower, SSIM at most 0.01 lower, LPIPS at most 0.005 higher.
 
 ```python
 def check(candidate, reference):
-    """One workload of a SVG-EAR-style rule. The 0.5 dB band is our example, not the task's."""
+    """One workload of an SVG-EAR-style rule: latency and PSNR only (the task also checks SSIM and LPIPS)."""
     return {
         "latency": candidate["latency"] <= 0.96 * reference["latency"],
-        "psnr": candidate["psnr"] >= reference["psnr"] - 0.5,
+        "psnr": candidate["psnr"] >= reference["psnr"] - 0.25,
     }
 
 
@@ -138,7 +140,8 @@ for cand in [{"latency": 97.0, "psnr": 30.4}, {"latency": 90.0, "psnr": 29.2}, {
 
 The first candidate is 3% faster, but the rule asks for 4%. The second is 10% faster but loses too
 much quality. Only the third passes. A task counts every such check on every hidden workload: on
-SVG-EAR there are 48, and the closest run, GPT-6 Astra's, passed 43. No model passed SVG-EAR.
+SVG-EAR there are 48 (four measures on each of twelve clips). No model passed SVG-EAR (0 of 16 as of
+October 26, 2026); in the case study's twelve runs (October 19), the closest, GPT-6 Astra's, passed 43.
 
 ::: pitfall
 **A score above the reference can still fail.** The final score averages over every metric and
@@ -156,6 +159,8 @@ The leaderboard's main number is **pass rate**: the share of a model's runs that
 per task, it is the number of tasks passed out of 48.
 
 ```python
+# Tasks passed, 6 of the 16 rows. The site shows rounded percentages; these counts are the sums of its
+# "Pass rate by domain" table.
 PASSED = {"Claude Opus 5.5": 28, "Gemini 4 Argon · Antigravity": 26, "GPT-6 Astra": 21,
           "GPT-6.1 Terra": 19, "Kimi K3.1 Pro": 12, "Step 5 Preview": 4}
 for model, n in PASSED.items():
@@ -187,8 +192,9 @@ ability exceeds the task's difficulty.
 
 The fit below is the core of that idea on a toy table: three models, five tasks, 1 for a pass and 0
 for a miss. The chance that model `m` passes task `t` is `sigmoid(ability[m] - difficulty[t])`, and
-gradient ascent finds the values that make the table most likely. A small `shrink` term keeps the values finite: without it, a task nobody passed would drift to infinite difficulty. Like the real FCI, one model is
-the zero point.
+gradient ascent finds the values that make the table most likely. A small `shrink` term keeps the
+values finite: without it, a task nobody passed would drift to infinite difficulty. Like the real
+FCI, one model is the zero point.
 
 ```python
 from math import exp
@@ -234,15 +240,19 @@ difficulty [-1.2, 0.9, 2.7, 5.0, 2.7]
 ```
 
 T4, which nobody passed, comes out hardest; T1, which everybody passed, easiest. T3 and T5 were each
-passed only by Model A, so they get the same difficulty. The real FCI is fitted on every metric of
-all 768 runs, counts how far each final score is above or below the reference, and reports 90%
-intervals from a bootstrap over tasks. Its zero point is Kimi K2.7, which takes part in the fit but
-is not on the leaderboard. On the real scale, Claude Opus 5.5 has an FCI of 54.0, and KV Compaction is
+passed only by Model A, so they get the same difficulty.
+
+The real fit is richer than the toy. It models each metric a task checks, with its own difficulty,
+and each run, with an effect of its own; a task's FDI is then the strength at which a model passes it
+half the time. It also counts how far each final score lands above or below the reference's; a run
+that fails but scores above the reference counts only as at least level with it (the KV Compaction
+case above). Its runs include those of Kimi K2.7, the zero point, which is not on the leaderboard,
+and it reports 90% intervals from a bootstrap over tasks. On the real scale, Claude Opus 5.5 has an FCI of 54.0, and KV Compaction is
 the hardest task, with an FDI of 103.0.
 
 # Test-time scaling and cost
 
-Runs differ in cost: an agent that tries more ideas spends more on its model's API. A **test-time
+Runs differ in cost: an agent that tries more ideas can spend more on its model's API. A **test-time
 scaling** curve asks: what would a model score if every run were stopped at a cost budget? A run
 that ended within the budget counts what it achieved; a run still going at the budget counts as one
 that ended there without a final submission, so it beats nothing. A curve can therefore never fall

@@ -69,14 +69,14 @@ const CHAPTERS = [
   {
     slug: "2-myers", nav: "Myers & band", title: "Myers's Bit-Vector Algorithm and the Band",
     subtitle: "64 cells per word, and only the cells a cheap path can reach",
-    abstract: "Neighbouring cells differ by at most one, so a column is a vector of +1, 0 and −1 deltas. Myers's algorithm updates a whole column of deltas with a few bitwise operations. A band skips cells no path of cost k can reach; Edlib doubles k from 64 until the band holds the answer.",
+    abstract: "Neighbouring cells differ by at most one, so a column is a vector of +1, 0 and −1 deltas. Myers's algorithm updates a column of deltas with a few bitwise operations per word of 64 rows. A band skips cells no path of cost k can reach; Edlib doubles k from 64 until the band holds the answer.",
     tags: ["bit-parallel", "Myers 1999", "Ukkonen band", "k doubling"],
     hero: "code:myers", heroCaption: "Myers's algorithm: a column per target letter",
     sections: [
       { id: "deltas", title: "Columns of +1, 0 and −1", html: `
-        <p>Neighbouring cells of the table differ by at most one. So a column can be stored as the <b>deltas</b> going down it: +1, 0 or −1 per row. Myers (1999) keeps them in two bit vectors, <code>pv</code> (the rows where the delta is +1) and <code>mv</code> (the rows where it is −1), and computes the next column from the current one with a handful of bitwise operations, whatever the number of rows. In a 64-bit machine word, that is 64 cells per operation. <code>peq</code> gives, for each letter, the rows where the query has that letter.</p>
+        <p>Neighbouring cells of the table differ by at most one. So a column can be stored as the <b>deltas</b> going down it: +1, 0 or −1 per row. Myers (1999) keeps them in two bit vectors, <code>pv</code> (the rows where the delta is +1) and <code>mv</code> (the rows where it is −1), and computes the next column from the current one with a handful of bitwise operations per word of 64 rows: 64 cells per operation. <code>peq</code> gives, for each letter, the rows where the query has that letter.</p>
         ${code("myers")}
-        <p>The line <code>((eq &amp; pv) + pv) ^ pv</code> is the trick: one addition carries information down a run of rows, as a chain of matches carries a low value down a diagonal. Here it is on our first example. Read the deltas from the top: column 1 starts at 1 (the top row holds <code>j</code>), then 1 − 1 = 0, then 1, 2, 3.</p>
+        <p>Myers's original version searches for the query anywhere in a text, so its top row is all zeros. For the global distance the top row grows by 1 per column; that is the <code>| 1</code> shifted in at the top, as Edlib does in NW mode. The line <code>((eq &amp; pv) + pv) ^ pv</code> is the trick: one addition carries information down a run of rows, as a chain of matches carries a low value down a diagonal. Here it is on our first example. Read the deltas from the top: column 1 starts at 1 (the top row holds <code>j</code>), then 1 − 1 = 0, then 1, 2, 3.</p>
         ${code("trace")}
         ${demo("myers", "Demo 2 · Myers column by column", "step through", "Each cell shows its value and, small, its delta from the cell above. Blue: +1; amber: −1.")}
         <p>The four columns match the table of the first chapter, and the five long pairs give the same distances as the full table. Edlib cuts a long query into <b>blocks</b> of 64 rows and passes the carry from one block to the next, so a column of a 30,000-base query takes 469 blocks.</p>` },
@@ -102,16 +102,16 @@ const CHAPTERS = [
         ${code("memory")}
         <p>Our 1,000-base pairs fit under 1 MiB, so Edlib would trace them back directly. The task's pairs need 30 MiB and 269 MiB. The human reference in the task uses 80 KiB.</p>` },
       { id: "middle", title: "Meeting in the middle", html: `
-        <p>Hirschberg (1975) found a way to get the path with two rows of memory. Cut the query at its middle row. Compute the top half's last row going forward, as before. Compute the bottom half's costs going <b>backward</b>, by running the same code on both strings reversed. At each column, the two numbers add up to the best cost of a path that crosses the middle row there; the smallest sum is the distance, and it marks where an optimal path crosses. This is the picture on the task page:</p>
+        <p>Hirschberg (1975) found a way, for the longest common subsequence, to get the path with two rows of working memory (plus the recursion and the path itself); the same trick works for edit distance. Cut the query at its middle row. Compute the top half's last row going forward, as before. Compute the bottom half's costs going <b>backward</b>, by running the same code on both strings reversed. At each column, the two numbers add up to the best cost of a path that crosses the middle row there; the smallest sum is the distance, and it marks where an optimal path crosses. This is the picture on the task page:</p>
         ${code("middle")}
         ${predict("Why is the smallest sum always the distance?", "<p>Every path from the top-left to the bottom-right crosses the middle row somewhere. The sum at a column is the cheapest path forced through that column, so the cheapest of them is the cheapest path of all.</p>")}` },
       { id: "divide", title: "Divide and conquer", html: `
-        <p>Once the crossing is known, the top-left and bottom-right quarters are two smaller alignment problems, and the other two quarters can be dropped. Solve each the same way, and stop when a piece is one row or one column, where a tiny table is enough.</p>
+        <p>Once the crossing is known, the top-left and bottom-right pieces (rectangles cut at the crossing, of any shape) are two smaller alignment problems, and the other two pieces can be dropped. Solve each the same way, and stop when a piece is one row or one column, where a tiny table is enough.</p>
         ${code("hirschberg")}
         <p>The task checks a path the way this function does: it must use up the whole query and the whole target interval, every match must really match, and its cost must equal the exact distance.</p>
         ${code("pathcost")}
         ${demo("hirschberg", "Demo 4 · Hirschberg's method", "step through the splits", "Grey cells are dropped; the amber piece is being split; blue cells are on the path so far.")}
-        <p>The price of linear memory is time. The first split computes the whole table once; the pieces below it add half as much, then a quarter, and so on, so the total is about <b>twice</b> the table. Edlib makes two changes: it splits the <b>target</b> in half, because Myers's algorithm runs column by column and gives a whole column of costs at once, and it bands every half by the known distance. Two smaller gains are possible: stop splitting once a piece's table fits in a small budget, and trace that piece back directly.</p>` },
+        <p>The price of linear memory is time. The first split computes the whole table once; the pieces below it add half as much, then a quarter, and so on, so the total is about <b>twice</b> the table. Edlib makes two changes: it splits the <b>target</b> in half, because Myers's algorithm runs column by column and gives a whole column of costs at once, and it bands every half by the known distance. Edlib also solves each half through <code>obtainAlignment</code>, the rule of the first section, so a piece whose traceback estimate is under 1 MiB is traced back directly. Under this task's memory rule, where the reference peaks at 80 KiB, 1 MiB is far too much: a solution must choose a much smaller budget.</p>` },
     ],
     takeaways: ["Forward top + backward bottom = cost through each column.", "Recurse on two pieces; drop the rest.", "Two rows of memory, about twice the time."],
   },
@@ -126,7 +126,7 @@ const CHAPTERS = [
         <p>The task keeps all of Edlib except the body of one function, <code>obtainAlignment&shy;Hirschberg</code>. The agent gets the query, the target interval, their reversed copies and the exact distance, and must return an optimal path as an array of operation bytes, allocated as the library expects. Any optimal path is accepted. The function may use local helpers and its own data structures, but nothing outside its body may change, and it may not touch files, the clock, other processes or threads.</p>` },
       { id: "judged", title: "How it is judged", html: `
         <p>There are 60 workloads: cores of 10,000 and 30,000 bases, similarities 60%, 70%, 80%, 90% and 99%, and the three modes, once with public seeds and once with held-out seeds. Every output is checked: the exact distance, the exact locations and a valid path of that cost, as in <code>path_cost</code>. A wrong answer anywhere scores zero.</p>
-        <p><b>Reconstruction time.</b> Each implementation runs every workload fifteen times with the path and fifteen times with locations only, each in a fresh process, measured from outside. The locations-only run does the same work except the path, so the reconstruction time is the fastest path run minus the fastest locations-only run. That difference is small and noisy. Here is our model of it, with a 6 ms process and random delays of up to 0.5 ms (our numbers):</p>
+        <p><b>Reconstruction time.</b> Each implementation runs every workload fifteen times with the path and fifteen times with locations only, each in a fresh process, measured from outside. The locations-only run does the same work except the path, so the reconstruction time is the fastest path run minus the fastest locations-only run, which leaves recovering the path and printing it. That difference is small and noisy. Here is our model of it, with a 6 ms process and random delays of up to 0.5 ms (our numbers):</p>
         ${code("timing")}
         ${demo("timing", "Demo 5 · A small, noisy difference", "move the sliders")}
         <p>A difference that is not positive is not a reconstruction time and fails the workload. The human reference, measured afresh in every run, averaged 0.86 ms, so the noise is not small next to it.</p>
@@ -134,9 +134,9 @@ const CHAPTERS = [
       { id: "score", title: "The pass rule and the score", html: `
         <p><b>Pass rule.</b> To pass, a run must be strictly faster than the reference and use no more memory on <b>every</b> one of the 60 workloads. The <b>score</b> is separate. It is the mean over workloads of <code>100 × A / (A + T)</code>, where <code>T</code> is the median time of a whole path run and <code>A</code> is a constant: <code>(length / 100,000)²</code> seconds, 0.01 s for 10,000 bases and 0.09 s for 30,000.</p>
         ${code("score")}
-        <p><code>T</code> is the whole process: reading the input, finding the distance and locations, and recovering the path. The agent can change only the last part. In our example, half a millisecond more on a 5 ms run of a 10,000-base pair moves its term from 66.7 to 64.5. So the scores of good runs sit close together, and the reference itself scores 65.5.</p>` },
+        <p><code>T</code> is the whole process: reading the input, finding the distance and locations, and recovering and printing the path. The agent can change only the last part. Take a run that needs 10 ms for 10,000 bases and 25 ms for 30,000 (our numbers): it scores 64.1, near the reference's 65.5. Half a millisecond more on its 10 ms runs moves their term from 50.0 to 48.8. So the scores of good runs sit close together.</p>` },
       { id: "results", title: "What the agents did", html: `
-        <p>One of sixteen models passed; three scored above the human reference (65.5). FDI 74.5 puts the task 13th hardest of 48.</p>
+        <p>One of sixteen models passed; three scored above the human reference (65.5). FDI 74.5 (the task difficulty index; see L00) puts the task 13th hardest of 48.</p>
         <div class="bi-scroll"><table><tr><th>Run</th><th>Peak memory (KiB)</th><th>CPU time (ms)</th><th>Memory won</th><th>Time won</th><th>Score</th><th></th></tr>
         <tr><td>Human reference</td><td>80</td><td>0.86</td><td></td><td></td><td>65.5</td><td></td></tr>
         <tr><td>Gemini 4 Argon · Antigravity</td><td>22.7</td><td>0.509</td><td>60 of 60</td><td>60 of 60</td><td>66.9</td><td>${pass}</td></tr>
@@ -145,8 +145,8 @@ const CHAPTERS = [
         <tr><td>Claude Opus 5.5</td><td>174</td><td>1.41</td><td>0 of 60</td><td>10 of 60</td><td>65.3</td><td>${fail}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>31.5</td><td>1.4</td><td>60 of 60</td><td>11 of 60</td><td>65.3</td><td>${fail}</td></tr>
         <tr><td>GPT-6.1 Terra</td><td>41.7</td><td>−0.369</td><td>60 of 60</td><td>39 of 60</td><td>59.3</td><td>${fail}</td></tr></table></div>
-        <p class="meta">Means over the 60 hidden workloads, as of October 26, 2026. "CPU time" is the reconstruction time defined above. <a href="${TASK}${SLUG}" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p><b>Gemini 4 Argon · Antigravity</b> passed, with under a third of the reference's memory. <b>GPT-6 Astra</b> had the fastest reconstruction on average but was slower than the reference on one workload, and failed. <b>GPT-6.1 Terra</b>'s mean reconstruction time is below zero: on many workloads its path runs were faster than its locations-only runs. In other runs, the reference's own mean came out as −0.021, 0.172 and 0.457 ms instead of about 0.86. That is the noise of the previous section.</p>` },
+        <p class="meta">Means over the 60 final workloads (30 public, 30 held out), as of October 26, 2026. "CPU time" is the reconstruction time defined above. <a href="${TASK}${SLUG}" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p><b>Gemini 4 Argon · Antigravity</b> passed, with under a third of the reference's memory. <b>GPT-6 Astra</b> had the fastest positive mean reconstruction time but was slower than the reference on one workload, and failed. <b>GPT-6.1 Terra</b>'s mean reconstruction time is below zero: on many workloads its path runs were faster than its locations-only runs. In other runs, the reference's own mean came out as −0.021, 0.172 and 0.457 ms instead of about 0.86. That is the noise of the previous section.</p>` },
       { id: "solution", title: "Claude Opus 5.5's solution", html: `
         <p>The task page describes the solution of <b>Claude Opus 5.5</b>, which did not pass (score 65.3). It has five parts:</p>
         <ol><li><em>A banded pass with checkpoints.</em> Since the distance is known, one forward pass covers only the band a path of that cost can reach. It runs Myers's algorithm on blocks of 64 rows and saves its state at sparse checkpoint columns.</li>
@@ -156,10 +156,10 @@ const CHAPTERS = [
         <li><em>Columns in parallel.</em> The bit-parallel kernel runs as a skewed wavefront over several neighbouring columns at once, so their carry chains share AVX-512 or AVX2 vector registers.</li></ol>
         <p>Its peak memory, 174 KiB on average, was above the reference's 80 KiB on all 60 workloads, so it could not pass however fast it was. Our reading: checkpoints and strips stored in full buy speed with memory, and this metric allows no tolerance.</p>` },
       { id: "diagonal", title: "A shortcut for similar pairs", html: `
-        <p>When the distance <code>d</code> is small next to the length, there is a faster way than the band, the <b>diagonal transition</b> method (Ukkonen 1985, Myers 1986). For each cost 0, 1, 2, …, keep how far each diagonal can be reached; from there, slide along the diagonal while the letters match, for free. Only <code>d + 1</code> rounds of <code>2d + 1</code> diagonals are needed, plus the slides.</p>
+        <p>When the distance <code>d</code> is small next to the length, there is a faster way than the band, the <b>diagonal transition</b> method (Ukkonen 1985, Myers 1986). For each cost 0, 1, 2, …, keep how far each diagonal can be reached; from there, slide along the diagonal while the letters match, for free. Only <code>d + 1</code> rounds of at most <code>2d + 1</code> diagonals are needed, plus the slides.</p>
         ${code("diagonal")}
-        <p>At 99% similarity it takes 1,384 steps where the band took 64,008 cells. Its work grows with the square of the distance, so the gain shrinks fast: at 60% it takes 169,358 steps, while Myers's algorithm covers the band's 446,178 cells as about 7,000 words of 64 cells, each a dozen bit operations (our rough comparison). Claude Opus 5.5 switches to this method when the cost is small next to the length, and traces back from the end cell.</p>
-        ${callout("pitfall", "FAST ON AVERAGE IS NOT A PASS", "<p>GPT-6 Astra had the fastest mean reconstruction, 0.406 ms, and lost one workload of 60. GPT-6.1 Sol lost one on time and two on memory. Claude Opus 5.5 and Gemini 4 Argon · Pi scored 65.3, near the reference's 65.5, but won on time on only 10 and 11 workloads.</p>")}` },
+        <p>At 99% similarity it takes 1,384 steps where the band took 64,008 cells. Its work grows with the square of the distance, so the gain shrinks fast: at 60% it takes 169,358 steps, while Myers's algorithm covers the band for the known distance, 322,780 cells, as about 5,000 words of 64 cells, each a dozen bit operations (our rough comparison). Claude Opus 5.5 switches to this method when the cost is small next to the length, and traces back from the end cell.</p>
+        ${callout("pitfall", "FAST ON AVERAGE IS NOT A PASS", "<p>GPT-6 Astra had the fastest positive mean reconstruction time, 0.406 ms, and lost one workload of 60. GPT-6.1 Sol lost one on time and two on memory. Claude Opus 5.5, Gemini 4 Argon · Pi and Muse Wonder 1.0 scored 65.3, near the reference's 65.5, but won on time on only 10, 11 and 7 workloads.</p>")}` },
     ],
     takeaways: ["The agent writes obtainAlignmentHirschberg.", "Faster and no more memory, on all 60 workloads.", "1 of 16 passed: Gemini 4 Argon · Antigravity, 66.9."],
   },
@@ -190,9 +190,10 @@ const CHAPTERS = [
         <details class="reveal"><summary>Solution</summary><p>For the 99% pair (distance 17), k = 16 fails and k = 32 holds the answer: 49,704 cells instead of 64,008. For the 60% pair, the extra tries at 16 and 32 add 49,548 cells: 924,084 instead of 874,536. Starting small helps only similar pairs.</p></details>
         <h3>Exercise 4 ★★ (modify)</h3>
         <p>Change <code>hirschberg</code> to trace a piece back directly when its table has at most 4,096 cells. How many cells does it compute for the 60% pair, and what is the largest table it keeps?</p>
+        <details class="reveal"><summary>Solution</summary><p>1,931,909 cells instead of 1,991,045, and its largest piece has 4,032 cells, still a valid path of cost 355. The saving in time is small; the largest table now sets the memory, which is the trade the task's budget is about.</p></details>
         <h3>Exercise 5 ★ (by hand)</h3>
         <p>A run's reconstruction takes 0.3 ms less than the reference's and uses 1 KiB more memory on one workload. Does it pass? What happens to its score?</p>
-        <details class="reveal"><summary>Solution</summary><p>It fails: memory must be no greater than the reference's on every workload, with no tolerance. Its score goes up a little, since the score counts only the whole path-run time; 0.3 ms on a 5 ms run of 10,000 bases moves that term by about 1.3 points.</p></details>` },
+        <details class="reveal"><summary>Solution</summary><p>It fails: memory must be no greater than the reference's on every workload, with no tolerance. Its score goes up a little, since the score counts only the whole path-run time; 0.3 ms less on a 10 ms run of 10,000 bases moves that term from 50.0 to 50.8.</p></details>` },
       { id: "reading", title: "Papers and further reading", html: `
         <ul><li>M. Šošić, M. Šikić. <em>Edlib: a C/C++ library for fast, exact sequence alignment using edit distance.</em> Bioinformatics 2017. <a href="https://doi.org/10.1093/bioinformatics/btw753" target="_blank" rel="noopener">doi 10.1093/bioinformatics/btw753</a></li>
         <li>G. Myers. <em>A fast bit-vector algorithm for approximate string matching based on dynamic programming.</em> Journal of the ACM 1999.</li>
@@ -208,18 +209,18 @@ const CHAPTERS = [
 
 const QUIZ = [
   { q: "In the edit table, cell D[3][5] is 2. What does that number mean?",
-    opts: ["The 3rd and 5th letters differ by 2", "The first 3 query letters and the first 5 target letters are 2 edits apart", "Two paths reach the cell", "The band is 2 wide there"],
-    a: 1, why: "D[i][j] is the edit distance between the prefixes q[:i] and t[:j]." },
+    opts: ["The first 3 query letters and the first 5 target letters are 2 edits apart", "The 3rd and 5th letters differ by 2", "Two paths reach the cell", "The band is 2 wide there"],
+    a: 0, why: "D[i][j] is the edit distance between the prefixes q[:i] and t[:j]." },
   { q: "In HW (infix) mode, what changes in the table?",
-    opts: ["The first column is all zeros", "The first row is all zeros, and the answer is the smallest value of the last row", "Mismatches cost two", "Nothing; only the output format"],
-    a: 1, why: "A free target start makes the first row zero; a free target end lets the alignment end at any column of the last row." },
+    opts: ["The first column is all zeros", "Mismatches cost two", "The first row is all zeros, and the answer is the smallest value of the last row", "Nothing; only the output format"],
+    a: 2, why: "A free target start makes the first row zero; a free target end lets the alignment end at any column of the last row." },
   { q: "Myers's algorithm keeps two bit vectors per column. What do they hold?",
-    opts: ["The query and the target", "The rows where the value goes up by 1 and the rows where it goes down by 1", "Matches and mismatches", "The band's edges"],
-    a: 1, why: "pv marks +1 deltas and mv marks −1 deltas; the rest are 0. One word covers 64 rows." },
+    opts: ["The query and the target", "Matches and mismatches", "The band's edges", "The rows where the value goes up by 1 and the rows where it goes down by 1"],
+    a: 3, why: "pv marks +1 deltas and mv marks −1 deltas; the rest are 0. One word covers 64 rows." },
   { q: "In Hirschberg's method, the top half forward gives 2 1 0 1 2 and the bottom half backward gives 3 2 1 1 2 on the middle row. Where does an optimal path cross?",
     opts: ["Column 0", "Column 2, where the sum 1 is smallest", "Column 4", "It cannot be told without the full table"],
     a: 1, why: "The sums are 5 3 1 2 4. The smallest, 1, is the distance, and it is at column 2." },
-  { q: "GPT-6 Astra had the fastest mean reconstruction time (0.406 ms) and used half the reference's memory. Why did it fail?",
-    opts: ["Its paths were wrong", "It was not faster than the reference on 1 of the 60 workloads", "Its score was below 65.5", "It used too much stack"],
-    a: 1, why: "A pass needs a strict win on time and no more memory on every workload. One slower workload is enough to fail." },
+  { q: "GPT-6 Astra had the fastest positive mean reconstruction time (0.406 ms) and used half the reference's memory. Why did it fail?",
+    opts: ["Its paths were wrong", "Its score was below 65.5", "It was not faster than the reference on 1 of the 60 workloads", "It used too much stack"],
+    a: 2, why: "A pass needs a strict win on time and no more memory on every workload. One slower workload is enough to fail." },
 ];

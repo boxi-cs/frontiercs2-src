@@ -48,7 +48,7 @@ const CHAPTERS = [
         ${code("tracer")}
         <p>The payload loop runs six times, so condition 0 appears six times on every path, with the same two branch ids. That is how loops look to a concolic tester.</p>` },
       { id: "flip", title: "Flipping one condition", html: `
-        <p>Our solver is the simplest one that works: it changes only the inputs that the negated condition reads, plus any input tied to them by an earlier condition, and tries every value from 0 to 15 in order. The real CREST does the same narrowing ("incremental solving") before calling the Yices solver. Here we negate condition 3, <code>not x2 == x1 + 4</code>. The earlier condition <code>x1 == 7</code> reads <code>x1</code>, so <code>x1</code> is tied in and must stay 7:</p>
+        <p>Our solver is the simplest one that works: it changes only the inputs that the negated condition reads, plus any input tied to them by an earlier condition, and tries every value from 0 to 15 in order. CREST narrows in the same way: its <code>YicesSolver::IncrementalSolve</code>, which the task's harness calls, keeps the old inputs and solves only the constraints linked to the negated one. Here we negate condition 3, <code>not x2 == x1 + 4</code>. The earlier condition <code>x1 == 7</code> reads <code>x1</code>, so <code>x1</code> is tied in and must stay 7:</p>
         ${code("solve")}
         <p>The new run follows the old path up to that condition and takes its other side, which reaches a condition, <code>x3 &gt; 13</code>, no earlier run had seen. If no values work, the negation is <b>infeasible</b>: the solver returns <code>None</code>, and no run is spent.</p>
         ${predict("On a path through <code>x3 == 2*x4</code> and <code>x5 == 15</code>, you negate <code>not x4 &gt; 7</code>. What happens?", "<p>It is infeasible. <code>x4 &gt; 7</code> with <code>x3 == 2*x4</code> needs <code>x3 ≥ 16</code>, but inputs stop at 15. The solver tries every pair and returns <code>None</code>: one solver call, no run. Try it in the demo with x0 = 12, x3 = 0, x4 = 0, x5 = 15.</p>")}
@@ -56,7 +56,7 @@ const CHAPTERS = [
       { id: "random", title: "Why not random inputs?", html: `
         <p>A random input reaches <code>x1 == 7</code> only if <code>x0 == 3</code> too: 1 chance in 256. Each further equality divides by 16 again. Concolic testing reaches the deepest branch from all zeros, CREST's starting input, in four flips. Each line shows a run's input and the last header condition it reached:</p>
         ${code("walk")}
-        <p>For a random input, <code>x3 &gt; 13</code> holds at the end of that chain with chance 2 in 65,536 (two of 100,000 here); concolic testing needed five runs.</p>` },
+        <p>For a random input, <code>x3 &gt; 13</code> holds at the end of that chain with chance 2 in 65,536 (two of 100,000 here, against about 3 expected); concolic testing needed five runs.</p>` },
     ],
     takeaways: ["Path constraint: the conditions a run depended on.", "Keep a prefix, negate one, solve: a new path.", "Equality checks defeat random inputs."],
   },
@@ -76,9 +76,9 @@ const CHAPTERS = [
         ${code("tester")}
         <p>Random testing never gets past the equality checks.</p>` },
       { id: "dfs", title: "Bounded depth-first search", html: `
-        <p>The classic concolic strategy (DART, CUTE) is depth-first search. CREST's <b>BoundedDFS</b> explores every path that differs from the first run in at most <code>depth</code> negations, in depth-first order. The task's score uses it, with depth 12, as its baseline.</p>
+        <p>The classic concolic strategy (DART, CUTE) is depth-first search. CREST's <b>BoundedDFS</b> explores every path that differs from the first run in at most <code>depth</code> negations, in depth-first order. The task's score uses it, with depth 12, as its baseline. (Ours is simplified: CREST's version also counts sibling flips against the bound, and does not restart. In our toy neither changes the result.)</p>
         ${code("dfs")}
-        <p>Depth-first search flips the last conditions first. Here those are the payload loop's, so it spends its budget on the 64 ways through the loop: 100 runs, 6 header paths, 14 branches. On grep the paper's DFS also did worst of all the strategies it tried (Figure 2).</p>` },
+        <p>Depth-first search dives once along the path, flipping each condition in turn, and then always backtracks to the most recent fork first. On every path the last six forks are the payload loop's, so after one dive through the header it spends the rest of the budget on the 64 ways through the loop: 100 runs, 6 header paths, 14 branches. On grep, the paper's DFS and random testing were both beaten by the CFG-directed and random searches (Section 5.3, Figure 2), and its depth-12 DFS stopped after fewer than 2<sup>12</sup> iterations, since some runs had fewer than 12 feasible conditions.</p>` },
       { id: "randbranch", title: "Random branch search", html: `
         <p>The paper's simplest fix is <b>random branch search</b>: negate a random condition of the current run, move to the new run, and restart on fresh inputs after a stretch with no new coverage.</p>
         ${code("randbranch")}
@@ -86,17 +86,17 @@ const CHAPTERS = [
       { id: "cfg", title: "Distances in the control-flow graph", html: `
         <p>CREST's new strategy uses the program's <b>control-flow graph</b>. CREST builds it from the C source with CIL: which branch can come next after each branch, with calls followed into the callee. For a branch <code>b</code>, <code>dist[b]</code> is the number of branches on the shortest static path from <code>b</code> to a branch not yet covered. One breadth-first search on the reversed graph, from all uncovered branches at once, gives every distance:</p>
         ${code("cfg")}
-        <p>The check matters: the graph must allow every step a real run takes, or the distances lie. After one run of all zeros, branch 4 (<code>x0 == 3</code>) is uncovered (distance 0), and branch 5, its other side, is 1 step from it.</p>` },
+        <p>The check matters: the graph must allow every step a real run takes, or the distances lie. After one run of all zeros, the run took branch 5 (<code>not x0 == 3</code>). Its other side, branch 4, is uncovered (distance 0), so it is a first flip CFG-directed search can try. Branch 5 itself is 1 step from the uncovered branch 12 (<code>x1 &gt; x2</code>).</p>` },
       { id: "cfgsearch", title: "CFG-directed search", html: `
-        <p><b>CfgDirectedSearch</b> negates the condition whose other side is closest to uncovered code. It adds to the distance <code>tries</code>, how often that side was already forced without finding anything new, so a close but hopeless target sinks in the ranking. A run with new coverage becomes the current run; a run of failed attempts triggers a restart. (The paper also follows the static path after a successful flip, "SearchAlongPath"; ours just ranks again.)</p>
+        <p><b>CfgDirectedSearch</b> negates the condition whose other side is closest to uncovered code. It adds to the distance <code>tries</code>, how often that side was already forced without finding anything new, so a close but hopeless target sinks in the ranking. A run with new coverage becomes the current run; a run of failed attempts triggers a restart. (Two simplifications: the paper also follows the static path after a successful flip, "SearchAlongPath", where ours just ranks again; and CREST's code forgets its coverage on every restart, so its distances point to branches not covered in the current epoch, where ours use the whole session's coverage.)</p>
         ${code("cfgsearch")}
         ${demo("session", "Demo 2 · One session, run by run", "pick a strategy, step through", "Seed 1, 100 runs. The second line is the run's header conditions, then its six payload checks (T: the byte was 0).")}` },
       { id: "race", title: "The race", html: `
         <p>Twenty seeds of each strategy, 100 runs each:</p>
         ${code("race")}
         ${demo("race", "Demo 3 · The race", "replay, or pick one seed")}
-        <p>The order matches the paper's grep plot: CFG-directed first, random branch catching up, random testing and DFS last. CFG-directed search also asks the solver less often than random branch search, because it skips conditions whose other side leads nowhere new. That second number matters in the task, where solver time counts against the strategy.</p>
-        ${predict("Move the payload loop to the start of the program. Which strategy gains the most?", "<p>Bounded DFS. It flips the last conditions first, which are now the header's: its mean over 20 seeds jumps from 13.55 to 21.00 branches after 25 runs, every reachable branch. Where the path explosion sits decides how DFS does; CFG-directed search does not care. (Exercise 2.)</p>")}` },
+        <p>The final order matches the paper's grep plot: CFG-directed and random branch ahead, random testing and DFS behind. In the paper random branch search also rose fast from the start; ours starts slowly because six of every path's conditions are payload checks. CFG-directed search also asks the solver less often than random branch search, because it skips conditions whose other side leads nowhere new. That second number matters in the task, where solver time counts against the strategy.</p>
+        ${predict("Move the payload loop to the start of the program. Which strategy gains the most?", "<p>Bounded DFS. It backtracks to the deepest forks first, and those are now the header's: its mean over 20 seeds jumps from 13.55 to 21.00 branches after 25 runs, every reachable branch. Where the path explosion sits decides how DFS does; CFG-directed search does not care. (Exercise 2.)</p>")}` },
     ],
     takeaways: ["640 paths, 21 reachable branches.", "DFS drowns in the loop; random branch does not stick.", "CFG distance + tries: most coverage, fewer solver calls."],
   },
@@ -110,16 +110,16 @@ const CHAPTERS = [
       { id: "writes", title: "What the agent writes", html: `
         <p>The task keeps CREST: the CIL instrumentation, the concolic library, the solver and the harness. Its search strategies are removed and replaced by an interface. The agent writes one strategy class in <code>src/frontier_solution/</code>; the starter only restarts on random inputs, like our <code>random_testing</code>. The strategy drives a run through a <code>Host</code>:</p>
         <ul><li><code>Restart()</code> runs the program on fresh random inputs (one iteration).</li>
-        <li><code>Negate(e, k)</code> keeps the first <code>k</code> constraints of execution <code>e</code>, negates constraint <code>k</code>, solves, and runs the program. An infeasible request returns <code>NULL</code> and costs no iteration. The new run does not always follow the predicted path; the strategy must compare the paths.</li>
+        <li><code>Negate(e, k)</code> keeps the first <code>k</code> constraints of execution <code>e</code>, negates constraint <code>k</code>, solves, and runs the program. An infeasible request returns <code>NULL</code> and costs no iteration. (The harness rejects some requests without a solver attempt: when an earlier constraint of the path is identical to constraint <code>k</code>.) The new run does not always follow the predicted path; the strategy must compare the paths.</li>
         <li><code>Release(e)</code> gives an execution back; at most 64 may be held.</li></ul>
-        <p>The strategy sees each execution's path of branch ids and which positions are constraints, and the program's static description: the branch ids, <code>paired[b]</code> (the other arm), <code>function_of[b]</code> and <code>successors[b]</code>, the branch-level control-flow graph, as in our <code>SUCC</code>. It never sees the constraints, the inputs or the solver. Branch ids are relabelled with a secret permutation in every run, so nothing can be tuned to one program's ids. The code runs in a sandbox with no files, clock, network or randomness other than <code>Host::Random()</code>.</p>` },
+        <p>The strategy sees each execution's path of branch ids and which positions are constraints, and the program's static description: the branch ids, <code>paired[b]</code> (the other arm), <code>function_of[b]</code> and <code>successors[b]</code>, the branch-level control-flow graph, as in our <code>SUCC</code>. It never sees the constraints, the inputs or the solver. Branch ids are relabelled with a secret permutation in every run, so nothing can be tuned to one program's ids. The code runs in a sandbox with no files, clock, network, environment or child processes, and no randomness other than <code>Host::Random()</code> and <code>Host::Uniform(n)</code>.</p>` },
       { id: "judged", title: "How it is judged", html: `
         <p>Each run of the strategy is one session with a budget of 4,000 iterations, on a real C program with a small symbolic input. The development program is GNU grep 2.2 (3,982 branches in this instrumentation). The final programs are not in the agent's workspace; the task page names them: <b>Vim 5.7</b> and <b>sed 3.02</b>. Two measurements are taken per run: <b>branches covered</b>, and <b>search overhead</b>, the CPU time of the strategy plus the solver time its <code>Negate</code> requests cost (running the program itself does not count). Safety caps (wall-clock time, overhead, solver attempts, requests) end a run early but keep it valid.</p>
-        <p>The <b>score</b>, averaged over the programs, is <code>100 × max(0, C − B) / (T − B)</code>, where <code>C</code> is the mean coverage over 30 seeds, <code>B</code> the mean coverage of bounded DFS with depth 12, and <code>T</code> the program's number of branches. It uses no reference measurement and ignores overhead. It is far below 100 for any strategy, because much of a program cannot be reached from one entry point.</p>` },
+        <p>The <b>score</b>, averaged over the programs, is <code>100 × max(0, C − B) / (T − B)</code>, where <code>C</code> is the mean coverage over 30 seeds, <code>B</code> the mean coverage of bounded DFS with depth 12, and <code>T</code> the program's number of branches. It uses no reference measurement and ignores overhead. It is far below 100 for any realistic strategy, because much of a program is unreachable from one entry point within the budget.</p>` },
       { id: "rule", title: "The pass rule", html: `
         <p>The judge runs the candidate and the reference, the paper's CFG-directed search, on the same 30 seeds of each program, interleaved on the same machine. On <b>every</b> program the candidate must have more coverage and less overhead, each by more than three standard errors of the difference of the two means, <code>3 × s × √(2/30)</code>, where <code>s²</code> is the mean of the two sample variances:</p>
         ${code("score")}
-        <p>The margin is about 0.77 standard deviations of one seed. Because <code>s</code> includes the candidate's own spread, a noisy strategy needs a bigger win.</p>
+        <p>The margin is about 0.77 standard deviations of one seed. Margins differ from run to run: the 16 runs' Vim coverage margins on the task page range from +102 to +335. Because <code>s</code> includes the candidate's own spread, a noisy strategy needs a bigger win.</p>
         ${demo("rule", "Demo 4 · One rule, one program", "pick a case or edit the numbers")}` },
     ],
     takeaways: ["Restart, Negate, Release; ids relabelled every run.", "Score: coverage above DFS, as a share of what is left.", "Pass: coverage and overhead, both programs, by 3 standard errors."],
@@ -144,7 +144,7 @@ const CHAPTERS = [
       { id: "verdict", title: "Four rules per run", html: `
         <p>Each run faces four rules: coverage and overhead, on two programs. The hover text gives the reference in that run and the margin needed. The two best runs each missed one rule:</p>
         ${code("verdict")}
-        <p>GPT-6.1 Terra covered 1,230 more Vim branches than the reference, and its Vim overhead cleared by 0.4 s, but on sed it spent 1.6 s more than the reference. Claude Opus 5.5 lost the other way: faster than the reference on Vim, but not by the 26.3 s needed. Five runs cleared three of the four rules (also GPT-6.1 Sol, DeepSeek V4.1 Flash 1017 and Step 5 Preview); none cleared all four.</p>` },
+        <p>GPT-6.1 Terra covered 1,230 more Vim branches than the reference, and its Vim overhead cleared by about 0.4 s, but on sed it spent about 1.6 s more than the reference (both from the page's rounded figures; the judge compares whole milliseconds). Claude Opus 5.5 lost the other way: faster than the reference on Vim, but not by the 26.3 s needed. Five runs cleared three of the four rules (also GPT-6.1 Sol, DeepSeek V4.1 Flash 1017 and Step 5 Preview); none cleared all four.</p>` },
       { id: "ideas", title: "The best runs' ideas", html: `
         <p>The task page shows <b>Claude Opus 5.5</b>'s patch, a CFG-directed "chain search" of 385 added lines. From its comments:</p>
         <ol><li><em>Epochs.</em> Each epoch starts from a fresh random input and forgets which branches the epoch has covered. It follows a chain: from the current run, try constraints in order of the CFG distance of their other arm to code not covered in this epoch, and move to the first run that covers something new for the epoch. An epoch ends when the chain stops finding new code.</li>
@@ -175,18 +175,19 @@ const CHAPTERS = [
       { id: "exercises", title: "Exercises", html: `
         <p>The exercises use the programs from the notes. Copy them from the earlier chapters and run them with Python 3.</p>
         <h3>Exercise 1 ★ (by hand)</h3>
-        <p>Start the walk from <code>[0] * 12</code> but flip the <em>last</em> failed check first. How many runs does it take to reach <code>x3 &gt; 13</code>? (Demo 1 lets you try it.)</p>
+        <p>Change the walk to always flip the <em>last</em> condition of the path (a payload check). How many runs does it take to reach <code>x3 &gt; 13</code>, and why? (Demo 1 lets you try it.)</p>
+        <details class="reveal"><summary>Solution</summary><p>It never gets there. The last condition is always <code>x11 == 0</code>, so each flip changes only <code>x11</code> and the header never changes.</p></details>
         <h3>Exercise 2 ★★ (modify)</h3>
         <p>Move the payload loop to the start of <code>program</code> (and update <code>SUCC</code>: the loop's branches lead to the loop or to branches 2 and 3, and the header's last branches lead nowhere). How does bounded DFS do now, and why?</p>
-        <details class="reveal"><summary>Solution</summary><p>DFS covers all 21 reachable branches within 25 runs on every seed (mean 21.00), since it flips the last conditions first and those are now the header's. CFG-directed search reaches 20.20 after 100 runs. Where the explosion sits decides how DFS does.</p></details>
+        <details class="reveal"><summary>Solution</summary>${code("solutions")}<p>DFS covers all 21 reachable branches within 25 runs on every seed (mean 21.00), since it backtracks to the deepest forks first and those are now the header's. CFG-directed search reaches 20.20 after 100 runs. Where the explosion sits decides how DFS does.</p></details>
         <h3>Exercise 3 ★★ (experiment)</h3>
         <p>Change <code>x4 &gt; 7</code> to <code>x4 &gt; 6</code>. Which strategies find branch 20, and after how many runs?</p>
-        <details class="reveal"><summary>Solution</summary><p>Now <code>x3 = 14, x4 = 7</code> works. Over seeds 1 to 20: CFG-directed finds it in 16 sessions (mean run 14.1), bounded DFS in 8 (21.8), random branch in 5 (55.4), random testing in none.</p></details>
+        <details class="reveal"><summary>Solution</summary><p>Now <code>x3 = 14, x4 = 7</code> works. Over seeds 1 to 20 (the “Exercise 3” lines of the output under Exercise 2's solution): CFG-directed finds it in 16 sessions (mean first run 14.1), bounded DFS in 8 (21.8), random branch in 5 (55.4), random testing in none.</p></details>
         <h3>Exercise 4 ★★ (modify)</h3>
         <p>In <code>random_branch</code>, negate only conditions whose other side is uncovered. Compare with CFG-directed search.</p>
         <h3>Exercise 5 ★ (by hand)</h3>
         <p>A candidate covers 8,000 Vim branches with a per-seed spread of 300; the reference covers 7,700 with a spread of 240. Does it clear the coverage rule?</p>
-        <details class="reveal"><summary>Solution</summary><p>s = √((300² + 240²) / 2) = 271.7, so the margin is 0.7746 × 271.7 = 210.4. The gain of 300 clears it. Demo 4 checks this.</p></details>` },
+        <details class="reveal"><summary>Solution</summary><p>s = √((300² + 240²) / 2) = 271.7, so the margin is 0.7746 × 271.7 = 210.4. The gain of 300 clears it (the last line of the output under Exercise 2's solution). Demo 4 checks this.</p></details>` },
       { id: "reading", title: "Papers and further reading", html: `
         <ul><li>J. Burnim, K. Sen. <em>Heuristics for Scalable Dynamic Test Generation.</em> ASE 2008. <a href="${PAPER}" target="_blank" rel="noopener">Technical report UCB/EECS-2008-123</a></li>
         <li>P. Godefroid, N. Klarlund, K. Sen. <em>DART: Directed Automated Random Testing.</em> PLDI 2005.</li>
@@ -203,8 +204,8 @@ const QUIZ = [
     opts: ["x0 == 3 only", "x0 &lt; 8 and x0 == 3", "x0 &lt; 8, x0 == 3 and not x1 &gt; x2", "not x0 &lt; 8"],
     a: 1, why: "Keep the prefix (the first condition) and negate the second. Conditions after it are dropped: the new run may go anywhere from there." },
   { q: "Why does bounded DFS cover so little of the toy program in 100 runs?",
-    opts: ["It flips the last conditions first, so it explores the payload loop's 64 variations", "Its solver is slower", "It never restarts", "It only negates infeasible conditions"],
-    a: 0, why: "Depth-first order explores the deepest flips first. The payload loop sits at the end of every path, so DFS spends its budget there: 6 header paths in 100 runs." },
+    opts: ["It backtracks to the most recent fork first, and the last six forks are the payload loop's", "Its solver is slower", "It never restarts", "It only negates infeasible conditions"],
+    a: 0, why: "After one dive through the header, DFS backtracks to the deepest forks first. The payload loop sits at the end of every path, so DFS spends its budget on its 64 variations: 6 header paths in 100 runs." },
   { q: "In CFG-directed search, why add <code>tries</code> to the distance?",
     opts: ["To prefer long paths", "To count solver time", "So a close but hopeless target sinks in the ranking after failed attempts", "To make the search deterministic"],
     a: 2, why: "A target can be close in the graph but infeasible or barren. Each failed attempt raises its rank key, so the search moves on to other targets." },

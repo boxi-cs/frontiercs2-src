@@ -249,8 +249,8 @@ At 99% the pair is 17 edits apart; at 60% the distance is over a third of the le
 Neighbouring cells of the table differ by at most one. So a column can be stored as the **deltas**
 going down it: +1, 0 or −1 per row. Myers (1999) keeps them in two bit vectors, `pv` (the rows where
 the delta is +1) and `mv` (the rows where it is −1), and computes the next column from the current one
-with a handful of bitwise operations, whatever the number of rows. In a 64-bit machine word, that is
-64 cells per operation. `peq` gives, for each letter, the rows where the query has that letter.
+with a handful of bitwise operations per word of 64 rows: 64 cells per
+operation. `peq` gives, for each letter, the rows where the query has that letter.
 
 ```python
 def peq(q):
@@ -284,7 +284,10 @@ def myers(q, t, trace=False):
     return score
 ```
 
-The line `((eq & pv) + pv) ^ pv` is the trick: one addition carries information down a run of rows,
+Myers's original version searches for the query anywhere in a text, so its top row is all zeros.
+For the global distance the top row grows by 1 per column; that is the `| 1` shifted in at the top,
+as Edlib does in NW mode. The line `((eq & pv) + pv) ^ pv` is the trick: one addition carries
+information down a run of rows,
 as a chain of matches carries a low value down a diagonal. Here it is on our first example. Read the
 deltas from the top: column 1 starts at 1 (the top row holds `j`), then 1 − 1 = 0, then 1, 2, 3.
 
@@ -404,7 +407,9 @@ need 30 MiB and 269 MiB. The human reference in the task uses 80 KiB.
 
 ## Meeting in the middle
 
-Hirschberg (1975) found a way to get the path with two rows of memory. Cut the query at its middle
+Hirschberg (1975) found a way, for the longest common subsequence, to get the path with two rows
+of working memory (plus the recursion and the path itself); the same trick works for edit distance.
+Cut the query at its middle
 row. Compute the top half's last row going forward, as before. Compute the bottom half's costs going
 **backward**, by running the same code on both strings reversed. At each column, the two numbers
 add up to the best cost of a path that crosses the middle row there; the smallest sum is the
@@ -429,8 +434,9 @@ sum    [5, 3, 1, 2, 4] -> crosses at column 2
 
 ## Divide and conquer
 
-Once the crossing is known, the top-left and bottom-right quarters are two smaller alignment
-problems, and the other two quarters can be dropped. Solve each the same way, and stop when a piece
+Once the crossing is known, the top-left and bottom-right pieces (rectangles cut at the
+crossing, of any shape) are two smaller alignment problems, and the other two pieces can be dropped.
+Solve each the same way, and stop when a piece
 is one row or one column, where a tiny table is enough.
 
 ```python
@@ -491,9 +497,11 @@ for s in (99, 60):
 The price of linear memory is time. The first split computes the whole table once; the pieces below it
 add half as much, then a quarter, and so on, so the total is about **twice** the table. Edlib makes
 two changes: it splits the **target** in half, because Myers's algorithm runs column by column and
-gives a whole column of costs at once, and it bands every half by the known distance. Two smaller
-gains are possible: stop splitting once a piece's table fits in a small budget, and trace that piece
-back directly.
+gives a whole column of costs at once, and it bands every half by the known distance. Edlib also
+solves each half
+through `obtainAlignment`, the rule of the first section, so a piece whose traceback estimate is under
+1 MiB is traced back directly. Under this task's memory rule, where the reference peaks at 80 KiB,
+1 MiB is far too much: a solution must choose a much smaller budget.
 
 # The task: path recovery, judged on time and memory
 
@@ -515,7 +523,8 @@ answer anywhere scores zero.
 **Reconstruction time.** Each implementation runs every workload fifteen times with the path and
 fifteen times with locations only, each in a fresh process, measured from outside. The locations-only
 run does the same work except the path, so the reconstruction time is the fastest path run minus the
-fastest locations-only run. That difference is small and noisy. Here is our model of it, with a
+fastest locations-only run, which leaves recovering the path and printing it. That difference is small and noisy.
+Here is our model of it, with a
 6 ms process and random delays of up to 0.5 ms (our numbers):
 
 ```python
@@ -561,23 +570,28 @@ def score_term(length, seconds):
 
 
 for length in (10_000, 30_000):
-    terms = [f"{score_term(length, ms / 1000):.1f}" for ms in (5, 5.5, 10, 45, 90)]
-    print(f"{length:,} bases, T = 5, 5.5, 10, 45, 90 ms:", terms)
+    terms = [f"{score_term(length, ms / 1000):.1f}" for ms in (5, 10, 10.5, 25, 45, 90)]
+    print(f"{length:,} bases, T = 5, 10, 10.5, 25, 45, 90 ms:", terms)
+example = (score_term(10_000, 0.010) + score_term(30_000, 0.025)) / 2
+print(f"10 ms on 10,000 bases and 25 ms on 30,000: score {example:.1f}")
 ```
 
 ```{.text .output}
-10,000 bases, T = 5, 5.5, 10, 45, 90 ms: ['66.7', '64.5', '50.0', '18.2', '10.0']
-30,000 bases, T = 5, 5.5, 10, 45, 90 ms: ['94.7', '94.2', '90.0', '66.7', '50.0']
+10,000 bases, T = 5, 10, 10.5, 25, 45, 90 ms: ['66.7', '50.0', '48.8', '28.6', '18.2', '10.0']
+30,000 bases, T = 5, 10, 10.5, 25, 45, 90 ms: ['94.7', '90.0', '89.6', '78.3', '66.7', '50.0']
+10 ms on 10,000 bases and 25 ms on 30,000: score 64.1
 ```
 
-`T` is the whole process: reading the input, finding the distance and locations, and recovering the
-path. The agent can change only the last part. In our example, half a millisecond more on a 5 ms run
-of a 10,000-base pair moves its term from 66.7 to 64.5. So the scores of good runs sit close together,
-and the reference itself scores 65.5.
+`T` is the whole process: reading the input, finding the distance and locations, and recovering and
+printing the path. The agent can change only the last part. Take a run that needs 10 ms for 10,000
+bases and 25 ms for
+30,000 (our numbers): it scores 64.1, near the reference's 65.5. Half a millisecond more on its 10 ms
+runs moves their term from 50.0 to 48.8. So the scores of good runs sit close together.
 
 # What the agents did
 
-One of sixteen models passed; three scored above the human reference (65.5). FDI 74.5 puts the task
+One of sixteen models passed; three scored above the human reference (65.5). FDI 74.5 (the task
+difficulty index; see L00) puts the task
 13th hardest of 48.
 
 | Run | Peak memory (KiB) | CPU time (ms) | Memory won | Time won | Score | |
@@ -590,11 +604,12 @@ One of sixteen models passed; three scored above the human reference (65.5). FDI
 | Gemini 4 Argon · Pi | 31.5 | 1.4 | 60 of 60 | 11 of 60 | 65.3 | fail |
 | GPT-6.1 Terra | 41.7 | −0.369 | 60 of 60 | 39 of 60 | 59.3 | fail |
 
-Means over the 60 hidden workloads, as of October 26, 2026. "CPU time" is the reconstruction time
+Means over the 60 final workloads (30 public, 30 held out), as of October 26, 2026. "CPU time" is
+the reconstruction time
 defined above.
 
 **Gemini 4 Argon · Antigravity** passed, with under a third of the reference's memory. **GPT-6 Astra**
-had the fastest reconstruction on average but was slower than the reference on one workload, and
+had the fastest positive mean reconstruction time but was slower than the reference on one workload, and
 failed. **GPT-6.1 Terra**'s mean reconstruction time is below zero: on many workloads its path runs
 were faster than its locations-only runs. In other runs, the reference's own mean came out as −0.021,
 0.172 and 0.457 ms instead of about 0.86. That is the noise of the previous section.
@@ -626,7 +641,7 @@ memory, and this metric allows no tolerance.
 When the distance `d` is small next to the length, there is a faster way than the band, the
 **diagonal transition** method (Ukkonen 1985, Myers 1986). For each cost 0, 1, 2, …, keep how far
 each diagonal can be reached; from there, slide along the diagonal while the letters match, for free.
-Only `d + 1` rounds of `2d + 1` diagonals are needed, plus the slides.
+Only `d + 1` rounds of at most `2d + 1` diagonals are needed, plus the slides.
 
 ```python
 def diagonal(q, t):
@@ -666,14 +681,17 @@ for s in (99, 90, 60):
 
 At 99% similarity it takes 1,384 steps where the band took 64,008 cells. Its work grows with the
 square of the distance, so the gain shrinks fast: at 60% it takes 169,358 steps, while Myers's
-algorithm covers the band's 446,178 cells as about 7,000 words of 64 cells, each a dozen bit
-operations (our rough comparison). Claude Opus 5.5 switches to this method when the cost is small next
+algorithm covers the band for the known distance, 322,780 cells, as about 5,000 words of 64 cells,
+each a dozen bit operations (our rough comparison). Claude Opus 5.5 switches to this method when the
+cost is small next
 to the length, and traces back from the end cell.
 
 ::: pitfall
-**Fast on average is not a pass.** GPT-6 Astra had the fastest mean reconstruction, 0.406 ms, and lost
-one workload of 60. GPT-6.1 Sol lost one on time and two on memory. Claude Opus 5.5 and Gemini 4 Argon
-· Pi scored 65.3, near the reference's 65.5, but won on time on only 10 and 11 workloads.
+**Fast on average is not a pass.** GPT-6 Astra had the fastest positive mean reconstruction time,
+0.406 ms, and lost
+one workload of 60. GPT-6.1 Sol lost one on time and two on memory. Claude Opus 5.5, Gemini 4 Argon
+· Pi and Muse Wonder 1.0 scored 65.3, near the reference's 65.5, but won on time on only 10, 11 and
+7 workloads.
 :::
 
 # Summary and self-check

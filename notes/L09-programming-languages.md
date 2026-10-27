@@ -62,13 +62,12 @@ and merging any parents that now collide in the memo. egg calls this **rebuildin
 class EGraph:
     """A small e-graph: union-find, a hash-cons memo, and parent lists."""
 
-    def __init__(self, deferred=True):
+    def __init__(self):
         self.parent = []     # union-find over class ids
         self.memo = {}       # node -> class id; a node is (op, child ids...)
         self.nodes = {}      # root id -> its nodes
         self.uses = {}       # root id -> [(node, class)] of nodes that use it
         self.pending = []    # classes whose parents need repair
-        self.deferred = deferred
         self.work = 0        # parent entries repaired: our cost measure
 
     def find(self, a):
@@ -99,9 +98,7 @@ class EGraph:
         self.parent[b] = a
         self.nodes[a] += self.nodes.pop(b)
         self.uses[a] += self.uses.pop(b)
-        self.pending.append(a)
-        if not self.deferred:
-            self.rebuild()       # restore the invariants at once
+        self.pending.append(a)   # rebuild() restores the invariants later
         return True
 
     def classes(self):
@@ -114,15 +111,16 @@ congruent, so they are merged, which may queue more work.
 
 ```python
 def repair(self, a):
+    parents, self.uses[a] = self.uses[a], []   # take the list: unions below may add to it
     seen = {}
-    for node, cls in self.uses[a]:
+    for node, cls in parents:
         self.work += 1
         self.memo.pop(node, None)
         node = self.canon(node)
         if node in seen:
             self.union(cls, seen[node])   # congruence: same op, same children
         self.memo[node] = seen[node] = self.find(cls)
-    self.uses[self.find(a)] = list(seen.items())
+    self.uses[self.find(a)] += list(seen.items())
 
 
 def rebuild(self):
@@ -130,7 +128,8 @@ def rebuild(self):
         todo = {self.find(a) for a in self.pending}
         self.pending = []
         for a in sorted(todo):
-            self.repair(a)
+            if self.find(a) == a:   # merged earlier this round: its root is queued
+                self.repair(a)
     for a in self.nodes:
         self.nodes[a] = sorted(set(self.canon(n) for n in self.nodes[a]))
 
@@ -184,13 +183,15 @@ Our workload: a class `x0` sits under `n` different operators `h0(x0)`, `h1(x0)`
 
 ```python
 def batch(n, deferred):
-    g = EGraph(deferred)
+    g = EGraph()
     xs = [add_term(g, (f"x{i}",)) for i in range(n)]
     for j in range(n):
         add_term(g, (f"h{j}", ("x0",)))
         add_term(g, (f"h{j}", (f"x{j}",)))
     for x in xs[1:]:
         g.union(xs[0], x)
+        if not deferred:
+            g.rebuild()   # the old way: restore the invariants after every union
     g.rebuild()
     return g.classes(), g.work
 
@@ -208,8 +209,9 @@ n=256: 257 classes both ways; work immediate 65535, deferred 511
 ```
 
 Both ways end with the same e-graph: one class for all the `x`s and one per operator. Repairing
-after every union visits the growing parent list of `x0` each time, about `n²` entries. Deferring
-visits it once, about `2n`. The paper finds that rebuilding gives asymptotic
+after every union visits the parent list of `x0` each time: repair dedupes it back to `n` entries, so
+each of the `n − 1` unions visits `n + 1` and the total is `n² − 1`. Deferring visits the merged list
+once, `2n − 1` entries. The paper finds that rebuilding gives asymptotic
 speedups in practice; our numbers only show the shape of the saving.
 
 ::: pitfall
@@ -232,7 +234,9 @@ with explanations, and associativity of addition) and three hidden ones of the s
 run many times. To pass, on every test the agent's code must be at least 5% faster than the human
 reference in **two** measures: total wall-clock time, and congruence-maintenance time (the time
 spent applying matches and rebuilding). The score uses only the agent's own times: with `G` the
-geometric mean of its wall-clock times, `score = 100 × S / (S + G)` with `S = 20 ms`.
+geometric mean of its per-test median wall-clock times, `score = 100 × S / (S + G)` with
+`S = 20 ms`. Below, "mean time" means that geometric mean: the tests range from about 5 ms to about
+390 ms, so it sits far below the plain average in the results table.
 
 ```python
 S = 0.020
@@ -244,12 +248,12 @@ def egg_score(seconds):
 
 for name, score in [("Human reference", 54.3), ("Kimi K3.1 Pro", 62.3)]:
     seconds = S * (100 / score - 1)          # the formula, solved for the time
-    print(f"{name}: score {score} means a mean time of {1000 * seconds:.1f} ms")
+    print(f"{name}: score {score} means a geometric-mean time of {1000 * seconds:.1f} ms")
 ```
 
 ```{.text .output}
-Human reference: score 54.3 means a mean time of 16.8 ms
-Kimi K3.1 Pro: score 62.3 means a mean time of 12.1 ms
+Human reference: score 54.3 means a geometric-mean time of 16.8 ms
+Kimi K3.1 Pro: score 62.3 means a geometric-mean time of 12.1 ms
 ```
 
 ## What the agents did
@@ -263,14 +267,17 @@ both measures on all six tests.
 | Kimi K3.1 Pro | 3.25 (won 4 of 6) | 77.6 (won 2 of 6) | 62.3 | Fail |
 | GPT-6.1 Terra | 3.21 (won 3 of 6) | 80.8 (won 3 of 6) | 61.8 | Fail |
 | Gemini 4 Argon · Pi | 2.78 (won 6 of 6) | 74.2 (won 4 of 6) | 61.7 | Fail |
+| Gemini 4 Argon · Antigravity | 2.84 (won 6 of 6) | 77.2 (won 4 of 6) | 61.6 | Fail |
 | Claude Opus 5.5 | 3.98 (won 0 of 6) | 99.6 (won 0 of 6) | 52.8 | Fail |
 
-Means over the six hidden tests, as of October 26, 2026. "Won" counts the tests on which the run
+Selected rows; means over the six graded tests (three public, three hidden), as of October 26,
+2026. The full table is on the task page. "Won" counts the tests on which the run
 beat the reference.
 
-Gemini 4 Argon · Pi came closest: it beat the reference on congruence time in all six tests and on
-wall-clock time in four. The task page describes the run of **Claude Opus 5.5**, which did not
-pass. It repairs pending parents as our `repair` does, then propagates analysis data: when a class's
+Gemini 4 Argon · Pi and Gemini 4 Argon · Antigravity came closest: each beat the reference on
+congruence time in all six tests and on wall-clock time in four. The task page describes the run of **Claude Opus 5.5**, which did not
+pass. It finds congruences through collisions in one global memo rather than a per-class `seen`
+map, then propagates analysis data: when a class's
 data changes, its parents go back on the queue. Both loops repeat until neither has work. Finally it
 visits every class once, sorts its nodes and removes duplicates, and rebuilds the index from each
 operator to the classes that contain it, which pattern matching uses.
@@ -451,9 +458,9 @@ cost 34 -> 31, ratio 1.097, reduction 8.8%
 ```
 
 BABBLE does more than this. It repeats the search for a second round, keeps a beam of 64 partial
-libraries, and, with domain **equations** such as the commutativity of addition, runs equality
+libraries, and, for the corpora that have domain **equations** (lists and physics) such as the commutativity of addition, runs equality
 saturation first, so a class holds several forms of a fragment. Anti-unifying two classes then gives
-a *set* of patterns, one for each pair of forms. The paper computes these sets across the whole
+a *set* of patterns, built from the pairs of forms of each child. The paper computes these sets across the whole
 e-graph by crossing its **tree automaton** (the e-graph seen as rules `op(classes) → class`) with
 itself.
 
@@ -634,10 +641,10 @@ and the MariaDB check stay. A refutation counts only if MariaDB runs both querie
 database and sees different results.
 
 Each suite has 16 wrong LeetCode answers (four each at row bounds 2, 3, 4 and 5, with a 2-second
-budget), three splitting tasks of 50 or 100 queries, and two hard pairs from the paper with
+budget), three splitting tasks of 50 or 100 queries, and two paper-scale hard pairs with
 20-second budgets. To pass, on each of the 19 ordinary workloads it must refute wherever the
 reference does and take at most `max(0.03 s, 20%)` longer; on the two hard pairs it must be more
-than twice as fast. The score counts refutations first, then total time in steps of 0.5:
+than twice as fast and must also refute wherever the reference does. The score counts refutations first, then total time in steps of 0.5:
 
 ```python
 from math import ceil, exp
@@ -916,7 +923,7 @@ slower on 4 of the 14 workloads, so it failed.
 1. *One data structure, three tasks.* Egg maintains the e-graph, BABBLE mines it for functions, and
    Glenside attaches shapes to it. Knowing union-find, the memo and congruence covers all three.
 2. *Every workload, every metric.* In Egg, thirteen runs beat the reference's score and none passed;
-   in BABBLE and Polygon, the best score was not a pass.
+   in BABBLE the best score failed, and in Polygon the fastest run failed.
 3. *Write less, not faster.* In Glenside, the passing runs added fewer than 50 nodes instead of
    55,200: a direct rewrite beat a big search.
 :::

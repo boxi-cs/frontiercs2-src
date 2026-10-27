@@ -71,12 +71,13 @@ const CHAPTERS = [
       { id: "removed", title: "What the task removes", html: `
         <p>The task keeps TAGE, the rest of the statistical corrector and the simulator. It removes the register-value component of the corrector, and the agent writes it in nine marked regions of one C++ file: its state, its snapshot at prediction time, how it observes decode and execute events, its vote (<code>pv.LSUM</code>) and its training. Which registers to use, how to represent a value, how big the tables are and how much the vote weighs are all the agent's choice. The whole predictor must fit <b>192 KiB</b> of declared state; the reference uses 1,570,890 of the 1,572,864 bits.</p>` },
       { id: "judged", title: "How it is judged", html: `
-        <p>Each submission runs a cycle-level simulator over the <b>105 traces</b> of CBP 2025, in six groups of programs (compression, floating point, infrastructure, integer, media, web). Only the second half of each trace is measured. The score combines the two means:</p>
+        <p>Each submission runs a cycle-aware simulator over the <b>105 traces</b> of CBP 2025, in six groups of programs (compression, floating point, infrastructure, integer, media, web). Only the second half of each trace is measured. The score combines the two means:</p>
         ${code("runltsScore")}
         <p>The paper's own averages give the reference's score of 31.5. Five percent fewer of both errors would add only about one point: the score moves slowly.</p>
         <p>To pass, a predictor must make strictly fewer mispredictions <b>and</b> lose strictly fewer wrong-path cycles than the reference, on <b>every one of the 105 traces</b>. A tie anywhere fails. The task statement warns how noisy a single trace is: shifting the predictor's random stream by one call, which has nothing to do with quality, moves one trace's mispredictions by about 1% (standard deviation). Our model: if each trace's change is spread around the average gain with that 1% deviation, what is the chance of winning all 105?</p>
-        ${predict("A new predictor is 2% better on average, with 1% noise per trace. What is its chance of winning on all 105 traces?", "<p>About 9%. Each trace is a win with probability 0.977, and 0.977<sup>105</sup> ≈ 0.09. It takes about 3% to be fairly safe.</p>")}
+        ${predict("A new predictor is 2% better on average, with 1% noise per trace. What is its chance of winning on all 105 traces?", "<p>About 9%. Each trace is a win with probability 0.977, and 0.977<sup>105</sup> ≈ 0.09. It takes about 3% better on average to be fairly safe.</p>")}
         ${code("allWin")}
+        <p>A predictor 1% better on average almost surely loses somewhere. It takes about 3% better on average to be fairly safe, and RUNLTS is already the competition's winner. Our model checks mispredictions only; the wrong-path cycles must also win on every trace, so the real chance is lower.</p>
         ${demo("allwin", "Demo 3 · Winning on every trace", "move the gain and the noise", "Set the gain to 1% and draw a few times: a few red dots are enough to fail. At 4%, red dots become rare.")}` },
       { id: "agents", title: "What the agents did", html: `
         <p>No model passed, and none scored above the human reference (31.5). Every one of the sixteen runs scored between 30.9 and 31.3. With an FDI of 88.8, RUNLTS is the fifth-hardest of the 48 tasks.</p>
@@ -85,13 +86,13 @@ const CHAPTERS = [
         <tr><td>Claude Opus 5.5</td><td>3.24</td><td>141</td><td>191</td><td>31.3</td><td>${fail}</td></tr>
         <tr><td>GPT-6 Astra</td><td>3.26</td><td>142</td><td>192</td><td>31.2</td><td>${fail}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>3.26</td><td>141</td><td>192</td><td>31.2</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the 105 hidden traces, as of October 26, 2026. <a href="${TASK}runlts" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Means over the 105 final traces, as of October 26, 2026. <a href="${TASK}runlts" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Claude Opus 5.5 came closest. Its component, from the task page:</p>
         <ol><li><b>Tracking the newest producer.</b> For 33 registers (the 31 general ones, the stack pointer and the flags) it records which instruction last claimed each one at decode, and stores a value only if it comes from that claimant, as in our <code>newest_producer</code>.</li>
         <li><b>Picking recent registers.</b> At each prediction it takes the six registers with the most recent usable values and hashes each with the branch address into one shared table of small signed counters.</li>
         <li><b>Exact and coarse lookups.</b> Each register is looked up twice: by its exact value, and by a coarse class (magnitude, sign and two low bits), so that nearby values share what they learn.</li>
         <li><b>Joining the vote.</b> The counters' sum, with saturated counters counted three times, is added to the corrector's sum, with a trained weight per lookup group.</li></ol>
-        ${callout("pitfall", "REBUILDING THE PAPER IS NOT ENOUGH", "<p>The reference is the paper's own component, tuned by the team that won the competition. A good reconstruction lands close to it, about 1% worse, and the pass rule asks for a clear win on every trace.</p>")}` },
+        ${callout("pitfall", "REBUILDING THE PAPER IS NOT ENOUGH", "<p>The reference is, by every sign, the paper's own component: its storage and the paper's averages match the leaderboard's 31.5. A good reconstruction lands close to it, about 1% worse, and the pass rule asks for a clear win on every trace.</p>")}` },
     ],
     takeaways: ["Use a value only from its newest producer.", "Every trace, strictly, with ~1% noise per trace.", "No model passed; the best scored 31.3 against 31.5."],
   },
@@ -103,7 +104,7 @@ const CHAPTERS = [
     hero: "kami", heroCaption: "Pick a shape and a number of warps.",
     sections: [
       { id: "idea", title: "Many small products", html: `
-        <p>A GPU runs threads in <b>thread blocks</b>. A block runs on one streaming multiprocessor, and its threads come in <b>warps</b> of 32. Many workloads need a great number of <em>small</em> matrix products, one per block: in batched solvers, in small dense blocks of sparse solvers, in some neural networks. <b>KAMI</b> (Wang et al., SC 2025) brings ideas from <b>communication-avoiding</b> matrix multiplication, first built for clusters of machines, into a single block: the warps split the work so that they exchange as little data as possible through shared memory, and they compute on the double-precision <b>tensor cores</b>.</p>` },
+        <p>A GPU runs threads in <b>thread blocks</b>. A block runs on one streaming multiprocessor, and its threads come in <b>warps</b> of 32. Many HPC and AI workloads need a great number of <em>small</em> matrix products, one per block: general, low-rank, batched and sparse multiplication. <b>KAMI</b> (Wang et al., SC 2025) brings ideas from <b>communication-avoiding</b> matrix multiplication, first built for clusters of machines, into a single block: the warps split the work so that they exchange as little data as possible through shared memory, and they compute on the double-precision <b>tensor cores</b>.</p>` },
       { id: "memory", title: "Memory or compute?", html: `
         <p>Each block computes <code>C = A Bᵀ + 0.5 C</code> on its own matrices, in double precision (8 bytes per number). The task's four public shapes, with the batch of blocks it launches for each:</p>
         ${predict("A 16×16×24 block does 12,288 floating-point operations and moves 10,240 bytes. An H100 needs about 20 operations per byte to keep its FP64 tensor cores busy. What limits this block?", "<p>Memory. At 1.2 operations per byte, the bound is 1.2 × 3.35 TB/s ≈ 4.0 TFLOPS, far below the 67 TFLOPS peak.</p>")}
@@ -130,7 +131,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Sol</td><td>6.11</td><td>21.7</td><td>${pass}</td></tr>
         <tr><td>Muse Wonder 1.0</td><td>6.01</td><td>21.7</td><td>${fail}</td></tr>
         <tr><td>GLM 5.3</td><td>5.96</td><td>21.5</td><td>${pass}</td></tr></table>
-        <p class="meta">Means over the eight hidden shapes, as of October 26, 2026. <a href="${TASK}kami" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Means over the eight final shapes, as of October 26, 2026. <a href="${TASK}kami" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Claude Opus 5.5's kernel, from the task page:</p>
         <ol><li><b>Streaming the inputs.</b> Since the batch is bound by memory, it copies A and B into shared memory with asynchronous 16-byte copies: all of K at once when they fit in 48 KiB, otherwise in a pipeline of stages over K.</li>
         <li><b>Fusing the old C.</b> Each thread loads its part of C straight into its accumulator registers and halves it before the products start, so the read of C overlaps the reads of A and B.</li>
@@ -150,12 +151,12 @@ const CHAPTERS = [
     sections: [
       { id: "idea", title: "Row by row, or eight at a time", html: `
         <p>Multiplying two <b>sparse</b> matrices (SpGEMM) is a core step of graph analytics and scientific computing. The usual method, <b>Gustavson's</b>, works row by row: for each stored entry <code>A[i, k]</code>, it reads row <code>k</code> of B and adds <code>A[i, k] · B[k, :]</code> into row <code>i</code> of the result. Each stored entry of A costs one read of a row of B.</p>
-        <p><em>Improving SpGEMM Performance Through Matrix-Reordering and Cluster-wise Computation</em> (Islam, Xu, Dai and Buluç, SC 2025) groups neighboring rows of A into <b>clusters</b>. For a cluster, it reads each needed row of B once and uses it for every row of the cluster. To make the rows of a cluster share columns, it first <b>reorders</b> the rows so that similar rows sit together. On 110 matrices, it reports a 1.39× average speed-up.</p>` },
+        <p><em>Improving SpGEMM Performance Through Matrix-Reordering and Cluster-wise Computation</em> (Islam, Xu, Dai and Buluç, SC 2025) groups neighboring rows of A into <b>clusters</b>. For a cluster, it reads each needed row of B once and uses it for every row of the cluster. To make the rows of a cluster share columns, it first <b>reorders</b> the rows so that similar rows sit together. The paper compares 10 row orderings and 3 ways of forming clusters on 110 matrices; its best scheme, hierarchical clustering, is 1.39× faster on average. The task uses the simplest scheme: fixed clusters of eight consecutive rows after an RCM reordering.</p>` },
       { id: "reads", title: "Counting the reads", html: `
         <p>Our matrix is the 5-point stencil of an 8×8 grid: 64 rows, each with up to five entries. We count the rows of B read, one row at a time and eight at a time, in the grid's order, after shuffling the rows, and after a simple reordering of our own (sorting rows by their column lists).</p>
         ${code("reads")}
         <p>Row by row, the order does not matter: 288 reads. Eight at a time, the grid order needs 176, because neighboring rows share columns. Shuffled rows share fewer, and the reordering wins the sharing back. The task gives the order (a fixed RCM ordering per matrix); the agent's part is the format and the multiply.</p>
-        ${demo("spgemm", "Demo 5 · Clusters on a stencil matrix", "pick an order and a width", "Compare widths 1 and 8 in grid order, then shuffle. Which width saves most, and what does it cost?")}` },
+        ${demo("spgemm", "Demo 5 · Clusters on a stencil matrix", "pick an order and a width", "Compare widths 1 and 8 in grid order, then shuffle. Which width saves most?")}` },
       { id: "format", title: "The clustered format", html: `
         <p>For each group of eight rows, the format keeps one sorted list of column ids, and eight values per id, one per row (zero where a row has no entry). The multiply walks the list, reads row <code>k</code> of B once, and updates all eight lanes of every output column it reaches.</p>
         ${code("clusters")}
@@ -207,7 +208,7 @@ const CHAPTERS = [
         <p>Compute the arithmetic intensity of a 256×256×256 block. Is it still bound by memory on an H100?</p>
         <details class="reveal"><summary>Solution</summary><p>2 × 256³ = 33,554,432 operations; 8 × (4 × 65,536) = 2,097,152 bytes; 16 operations per byte. The bound is 16 × 3.35 ≈ 53.6 TFLOPS, still below the 67 TFLOPS peak, but close: much larger blocks become compute bound.</p></details>
         <h3>Exercise 4 ★★ (experiment)</h3>
-        <p>In the SpGEMM count, use clusters of 4 and of 16 rows (Demo 5 does this too). How do the reads of B change? Why might the paper fix the width at eight?</p>
+        <p>In the SpGEMM count, use clusters of 4 and of 16 rows (Demo 5 does this too). How do the reads of B change? Why might the task fix the width at eight?</p>
         <h3>Exercise 5 ★★★ (open)</h3>
         <p>Find a sparse matrix on which clustering eight rows stores <em>more</em> values in the cluster format than plain rows do. What makes the format wasteful there?</p>` },
       { id: "reading", title: "Papers and further reading", html: `

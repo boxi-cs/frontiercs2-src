@@ -30,3 +30,11 @@ footer p { margin: 4px 0; }
 .chip.fail { background: var(--red-soft); color: var(--red); }
 
 .cbtn.on:hover:not(:disabled) { color: var(--paper); filter: brightness(1.08); }
+
+/* Previous / next lecture links on a lecture's home. */
+.lecnav { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 28px; margin-top: 10px; }
+.lecnav a { font-weight: 600; text-decoration: none; }
+/* Shared by several lectures: long inline code wraps on phones; a simple colour legend. */
+p code, li code, td code { overflow-wrap: anywhere; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }

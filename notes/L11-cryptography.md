@@ -100,9 +100,10 @@ print("b =", b)
 b = [66, 93, 44, 33, 14, 23, 21, 32, 29, 4, 61, 51, 80, 10, 17, 25, 54, 71, 39, 80]
 ```
 
-The task checks a candidate exactly the way its public rules say: the right length, entries from
-the allowed alphabet, the right number of nonzeros, and a small residual `b − A s` in every row,
-after centering mod `q`. Any secret that passes counts, not only the one that was planted.
+The task checks a candidate in the way its public rules say; ours is a simplified version: the right
+length, entries from the allowed alphabet, the right number of nonzeros, and a small residual
+`b − A s` in every row, after centering mod `q`. The real rules allow a range of nonzeros and can
+also bound the residual's sum, its sum of squares and its number of nonzeros. Any secret that passes counts, not only the one that was planted.
 
 ```python
 def valid(A, b, s):
@@ -169,7 +170,8 @@ examples.
 
 Here there is no solver to restore. The agent writes its own attacks and submits one secret per
 instance. There are 200 public instances in ten families of matrix and secret structure: dense or
-sparse matrices, with binary, ternary, small or unrestricted mod-`q` secrets. Each submitted secret
+sparse matrices, some with small entries, and secrets that are binary, ternary, small, sparse or
+unrestricted mod `q`. Each submitted secret
 is checked directly against the published rules. The score is the share of instances solved; a pass
 means solving all 200.
 
@@ -178,9 +180,10 @@ all 20 in six families and the first six in each of the other four. With an FDI 
 LWE is the second-hardest task of the benchmark.
 
 ::: pitfall
-**Some families are hard by design.** LWE with a uniform secret and no extra structure is believed
-to be hard even for quantum computers. A family that is solvable at its size still needs the right
-attack, and an agent has five hours.
+**Structure makes a family attackable, not easy.** Every family has some structure, and each needs
+its own attack in five hours. Claude Opus 5.5 solved all 80 instances of the four families with
+unrestricted mod-`q` secrets; the families it solved only in part have binary or ternary secrets
+with 2 to 8 nonzeros.
 :::
 
 # CKKS Noise: predicting precision
@@ -198,7 +201,7 @@ A slot's **precision** is `−log2 |error|`: an error of 2⁻¹⁶ means 16 corr
 The task asks for the mean and the spread (standard deviation) of the precision over all slots.
 
 Our toy works like a fixed-point CKKS. A value `x` is stored as `x × Δ` plus a little Gaussian noise
-(standard deviation 3.2, a usual choice); squaring multiplies two noisy values, divides by `Δ`
+(encryption noise of standard deviation 3.2, a usual choice); squaring multiplies two noisy values, divides by `Δ`
 (**rescaling**) and adds rounding and key-switching noise.
 
 ```python
@@ -245,9 +248,11 @@ for k in range(6):
 5 squarings: actual (14.448, 3.006), estimator (14.425, 3.004)
 ```
 
-Each squaring costs about one bit: squaring doubles the relative error. In the toy, "actual" and
-"estimator" run the same model with different noise samples; in the task, "actual" is a real
-encrypted Lattigo run, and the estimator must get within a few hundredths of a bit of it.
+Each squaring costs about one bit: squaring doubles the relative error. The spread grows in the last
+rows because the values themselves spread out (0.9³² ≈ 0.03, 1.1³² ≈ 21) while the error is
+absolute. In the toy, "actual" and "estimator" run the same model with different noise samples; in
+the task, "actual" is a real encrypted Lattigo run. The reference estimator already gets within
+about 0.04 bits of it on average, and a pass must do at least as well on every setting.
 
 ## What the agent writes, and how it is judged
 
@@ -299,14 +304,17 @@ def miss(r):
     return round(abs(r[0] - actual[0]) + abs(r[1] - actual[1]), 3)
 
 
-print("worst replica", max(miss(r) for r in replicas), " picked", miss(pick))
+print("worst replica", max(miss(r) for r in replicas), " mean replica", round(mean(miss(r) for r in replicas), 3),
+      " picked", miss(pick))
 ```
 
 ```{.text .output}
-worst replica 0.25  picked 0.06
+worst replica 0.25  mean replica 0.101  picked 0.06
 ```
 
-A single replica can miss by a quarter of a bit; the one nearest the average misses by 0.06.
+In this draw of our toy, a single replica misses by 0.1 bit on average and by a quarter of a bit at
+worst; the one nearest the average misses by 0.06. Other draws give smaller numbers, but the order is
+the same.
 
 # QuarterPIR: reading privately
 
@@ -393,10 +401,13 @@ group parities.
 
 ## The two checksums
 
-The task's goal is strictly fewer bytes per lookup, while also being faster and using no more client
-memory. **Muse Wonder 1.0** found the biggest cut, with a trick from RAID-6 disk arrays: two
+The task's goal is strictly fewer bytes on every lookup, and also strictly lower server time per
+lookup, client setup time and end-to-end lookup time, with no more client memory (an allowance of
+32,768 bytes). The score weighs bytes half and the three times a sixth each; memory is not in it.
+**Muse Wonder 1.0** found the biggest cut of any passing run, with a trick from RAID-6 disk arrays: two
 checksums can rebuild two lost values. The server's group parities and the client's own parities
-agree in every group but two, and the client knows which two. So the server sends only a plain sum
+agree in every group but two: the group of the wanted entry and the group of the entry inserted at
+the hint's last refresh. The client knows both. So the server sends only a plain sum
 and a weighted sum of its group parities, and the client compares them with the same sums of its
 own. Two equations give the two differences. The real scheme adds with XOR and weights in the finite
 field with 2¹²⁸ elements; here is the same step with ordinary numbers, as in the case study.
@@ -437,13 +448,13 @@ the database and the request, so it carries no privacy content.
 
 Eleven of sixteen models passed; fifteen scored above the human reference (27.3). Gemini 4 Argon ·
 Antigravity had the best final score, 62.8, mostly from speed. Muse Wonder 1.0 (58.1) cut the most
-bytes, and was also much faster: at 67 million entries, server time per lookup fell from 856 µs to
+bytes of the passing runs, and was also much faster: at 67 million entries, server time per lookup fell from 856 µs to
 100 µs and client setup from 122.2 s to 18.7 s. Claude Opus 5.5 (55.3) instead dropped some keys
 from the request and stored the parities those keys would give, as client memory allowed.
 
 ::: pitfall
 **Every metric counts, memory too.** Kimi K3 sent only 736 bytes per lookup at 67 million entries,
-the fewest of any run, but kept 606.8 MB on the client against the reference's 85.3 MB, so it
+the fewest of any run, but kept 606.8 MB on the client against the reference's 85.3 MB (both at 67 million entries), so it
 failed.
 :::
 

@@ -42,7 +42,7 @@ const CHAPTERS = [
         ${code("fields")}` },
       { id: "harness", title: "Models and harnesses", html: `
         <p>Each model runs in its own agent harness: Claude Opus 5.5 in Claude Code, GPT-6 models in Codex CLI, Gemini 4 Argon in Antigravity and in Pi, and so on. So a leaderboard row is a model <em>and</em> its harness. A private set of more than 100 further tasks is kept back, to be announced later.</p>
-        ${predict("Gemini 4 Argon appears twice on the leaderboard, with pass rates of 54% and 40%. How can the same model score so differently?", "<p>The two rows use different harnesses, Antigravity and Pi. The harness decides how the model reads files, runs commands and uses its five hours, so it is part of what is measured.</p>")}` },
+        ${predict("Gemini 4 Argon appears twice on the leaderboard, with pass rates of 54% and 40%. How can the same model score so differently?", "<p>The two rows use different harnesses, Antigravity and Pi. The harness decides how the model reads files, runs commands and uses its five hours, so it is part of what is measured. One sourced example: under Pi, the provider's content filter refused a request and Pi ended the run in 10 of its 48 runs; Antigravity retries refused requests.</p>")}` },
     ],
     takeaways: ["Rebuild a paper's contribution.", "Beat the authors' code.", "A row is a model plus its harness."],
   },
@@ -76,11 +76,11 @@ const CHAPTERS = [
     hero: "code:check", heroCaption: "One workload of a pass rule with a margin",
     sections: [
       { id: "rule", title: "The rule", html: `
-        <p>A run <b>passes</b> only when its final submission beats the human reference on every metric the task checks and on every hidden workload. The criteria are set from the reference's own measurements, and some ask for a margin. For SVG-EAR, a video model's sparse attention, the latency must be at most 0.96 of the reference's, and three image-quality measures (PSNR, SSIM, LPIPS) must stay within fixed bands.</p>
+        <p>A run <b>passes</b> only when its final submission beats the human reference on every metric the task checks and on every hidden workload. The criteria are set from the reference's own measurements, and some ask for a margin. For SVG-EAR, a video model's sparse attention, the latency must be at most 0.96 of the reference's, and three image-quality measures must stay within small margins of the reference's scores: PSNR at most 0.25 dB lower, SSIM at most 0.01 lower, LPIPS at most 0.005 higher.</p>
         ${code("check")}
         <p>The first candidate is 3% faster, but the rule asks for 4%. The second is 10% faster but loses too much quality. Only the third passes.</p>
         ${demo("margin", "Demo 2 · A rule with a margin", "move the sliders")}
-        <p>A task counts every such check on every hidden workload: on SVG-EAR there are 48, and the closest run, GPT-6 Astra's, passed 43. No model passed SVG-EAR. (<a href="${SITE}blog/svg-ear-measured-error/" target="_blank" rel="noopener">case study ↗</a>)</p>` },
+        <p>A task counts every such check on every hidden workload: on SVG-EAR there are 48 (four measures on each of twelve clips). No model passed SVG-EAR (0 of 16 as of October 26, 2026); in the case study's twelve runs (October 19), the closest, GPT-6 Astra's, passed 43. (<a href="${SITE}blog/svg-ear-measured-error/" target="_blank" rel="noopener">case study ↗</a>)</p>` },
       { id: "fail", title: "Above the reference, and still a fail", html: `
         ${callout("pitfall", "A SCORE ABOVE THE REFERENCE CAN STILL FAIL", "<p>The final score averages over every metric and every workload, so a large gain in one place can hide a loss in another. On KV Compaction, Claude Opus 5.5 has the top score and sits above the human reference, but its answers fall short of the reference's accuracy on 2 of the 24 articles, so the run fails. The benchmark wants a result the paper's authors would accept as better, not a gain on one metric bought with another.</p>")}` },
     ],
@@ -100,30 +100,30 @@ const CHAPTERS = [
         <p>Each task's evaluator also scores the final submission on the hidden suite, from 0 to 100. A run that ends without a final submission scores 0. The <b>mean score</b> chart averages each run's score minus the human reference's score on the same task, so 0 means level with the reference. Claude Opus 5.5 leads at +9.2; Step 5 Preview is at −10.8.</p>` },
       { id: "fci", title: "FCI and FDI", html: `
         <p>Pass rate treats every task the same, but some tasks are much harder than others. The <b>FrontierCS Capabilities Index</b> (FCI) applies the idea of Epoch AI's ECI: one fit gives every model an ability and every task a difficulty, the <b>FDI</b>. A model beats a task's checks more often the more its ability exceeds the task's difficulty.</p>
-        <p>The fit below is the core of that idea on a toy table: three models, five tasks, 1 for a pass and 0 for a miss. The chance that model <code>m</code> passes task <code>t</code> is <code>sigmoid(ability[m] − difficulty[t])</code>, and gradient ascent finds the values that make the table most likely. A small <code>shrink</code> term keeps the values finite: without it, a task nobody passed would drift to infinite difficulty.</p>
+        <p>The fit below is the core of that idea on a toy table: three models, five tasks, 1 for a pass and 0 for a miss. The chance that model <code>m</code> passes task <code>t</code> is <code>sigmoid(ability[m] − difficulty[t])</code>, and gradient ascent finds the values that make the table most likely. A small <code>shrink</code> term keeps the values finite: without it, a task nobody passed would drift to infinite difficulty. Like the real FCI, one model is the zero point.</p>
         ${code("fit")}
         ${predict("T3 and T5 were each passed only by Model A. Will they get the same difficulty?", "<p>Yes: in this table they look identical, so the fit cannot tell them apart. Both come out at 2.7.</p>")}
         ${demo("fit", "Demo 3 · Fit abilities and difficulties", "click cells", "Try making Model Z pass T4. T4 drops from the hardest task to level with T3 and T5, and Model Z, the zero point, now ties with Model B, so B falls to 0.0.")}
-        <p>The real FCI is fitted on every metric of all 768 runs, counts how far each final score is above or below the reference, and reports 90% intervals from a bootstrap over tasks. Its zero point is Kimi K2.7, which takes part in the fit but is not on the leaderboard. On the real scale, Claude Opus 5.5 has an FCI of 54.0, and KV Compaction is the hardest task, with an FDI of 103.0.</p>` },
+        <p>The real fit is richer than the toy. It models each metric a task checks, with its own difficulty, and each run, with an effect of its own; a task's FDI is then the strength at which a model passes it half the time. It also counts how far each final score lands above or below the reference's; a run that fails but scores above the reference counts only as at least level with it (the KV Compaction case in chapter 3). Its runs include those of Kimi K2.7, the zero point, which is not on the leaderboard, and it reports 90% intervals from a bootstrap over tasks. On the real scale, Claude Opus 5.5 has an FCI of 54.0, and KV Compaction is the hardest task, with an FDI of 103.0.</p>` },
     ],
     takeaways: ["Pass rate: tasks passed out of 48.", "Mean score: minus the reference, 0 is level.", "FCI and FDI: one fit for models and tasks."],
   },
   {
     slug: "5-cost", nav: "Cost", title: "Test-Time Scaling and Cost",
     subtitle: "What a model would score if every run stopped at a budget",
-    abstract: "A test-time scaling curve stops every run at a cost budget. Runs that finished count what they achieved; runs still going count as nothing. A full evaluation of one model costs about US$1,400.",
+    abstract: "A test-time scaling curve stops every run at a cost budget. Runs that finished count what they achieved; runs still going count as nothing. A full evaluation of Claude Opus 5.5 costs about US$1,400.",
     tags: ["test-time scaling", "budget", "API cost"],
     hero: "budget", heroCaption: "Six toy runs and a budget.",
     sections: [
       { id: "curve", title: "The scaling curve", html: `
-        <p>Runs differ in cost: an agent that tries more ideas spends more on its model's API. A <b>test-time scaling</b> curve asks: what would a model score if every run were stopped at a cost budget? A run that ended within the budget counts what it achieved; a run still going at the budget counts as one that ended there without a final submission, so it beats nothing. A curve can therefore never fall as the budget grows.</p>
+        <p>Runs differ in cost: an agent that tries more ideas can spend more on its model's API. A <b>test-time scaling</b> curve asks: what would a model score if every run were stopped at a cost budget? A run that ended within the budget counts what it achieved; a run still going at the budget counts as one that ended there without a final submission, so it beats nothing. A curve can therefore never fall as the budget grows.</p>
         ${code("scaling")}
         ${demo("budget", "Demo 4 · Stop every run at a budget", "move the budget")}
         <p>The real curves plot FCI rather than pass rate, with each task's difficulty kept from the leaderboard fit, so a curve ends at the model's leaderboard value once the budget covers all its runs.</p>` },
       { id: "cost", title: "What an evaluation costs", html: `
         <p>A full evaluation is expensive. For Claude Opus 5.5, one pass over the 48 tasks costs about US$1,000 in API fees, US$300 in GPU time and US$100 in CPU time. The tasks, their evaluators and the judge are public as one evaluation environment (<a href="https://github.com/FrontierCS/FrontierCS-2" target="_blank" rel="noopener">github.com/FrontierCS/FrontierCS-2</a>), which installs into your own AWS account; GPU tasks also need Modal.</p>` },
     ],
-    takeaways: ["Stop every run at the budget.", "Unfinished runs count as nothing.", "About US$1,400 per model, per full evaluation."],
+    takeaways: ["Stop every run at the budget.", "Unfinished runs count as nothing.", "About US$1,400 for one full run of Claude Opus 5.5."],
   },
   {
     slug: "6-review", nav: "Review", title: "Review and How to Use the Course",

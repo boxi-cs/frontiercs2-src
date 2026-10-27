@@ -70,6 +70,7 @@
     .lec h3 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
     .lec h3 small { font: 500 12px var(--mono); color: var(--stone); white-space: nowrap; }
     .lec .tasks { font-size: 13px; color: var(--ink-2); flex: 1; }
+    .lec .lmeta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 0; font: 500 12px var(--mono); color: var(--stone); }
     .lec .notes { align-self: flex-start; margin-top: 8px; font-size: 13px; font-weight: 600; text-decoration: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--stone); }
     .lec.ready { border-color: color-mix(in srgb, var(--c, var(--teal)) 55%, var(--line)); }
     .lec.ready .notes { color: #fff; background: var(--teal); border-color: var(--teal); }
@@ -98,6 +99,7 @@
   <header class="topbar">
     <a class="brand" href="index.html"><span class="brand-mark">FCS</span><span class="brand-text"><b>FrontierCS 2 · Course</b><span>Computer-science R&amp;D, one field at a time</span></span></a>
     <span style="flex:1"></span>
+    <a class="btn" style="padding:6px 14px;font-size:13px" href="about/index.html">About</a>
     <a class="btn" style="padding:6px 14px;font-size:13px" href="https://frontier-cs.org/" target="_blank" rel="noopener">Benchmark ↗</a>
     <button class="iconbtn" id="theme" title="Light / dark">☾</button>
   </header>
@@ -164,6 +166,9 @@
       ]],
     ];
     const pad = (n) => String(n).padStart(2, "0");
+    // Reading time from each lecture's LECTURE.minutes; passing runs per field from the task pages (as of October 26, 2026).
+    const MINUTES = { 0: 40, 1: 80, 2: 70, 3: 70, 4: 60, 5: 60, 6: 60, 7: 85, 8: 90, 9: 75, 10: 60, 11: 60, 12: 60, 13: 60 };
+    const PASSED = { 1: 23, 2: 31, 3: 19, 4: 13, 5: 3, 6: 1, 7: 24, 8: 57, 9: 17, 10: 0, 11: 22, 12: 1, 13: 0 };
     const COLOR = { 0: "var(--teal)", 1: "var(--f-blue)", 2: "var(--f-blue)", 3: "var(--f-blue)", 4: "var(--f-blue)", 5: "var(--f-blue)", 6: "var(--f-blue)",
       7: "var(--f-green)", 8: "var(--f-orange)", 9: "var(--f-purple)", 10: "var(--f-grey)", 11: "var(--f-red)", 12: "var(--f-red)", 13: "var(--f-grey)" };
     document.getElementById("lectures").innerHTML = LECTURES.map(([part, list]) =>
@@ -172,6 +177,7 @@
           <span class="num">L${pad(n)}</span>
           <h3>${t}${n ? `<small>${tasks.length} task${tasks.length > 1 ? "s" : ""}</small>` : ""}</h3>
           <p class="tasks">${tasks.join(" · ")}</p>
+          <p class="lmeta"><span>≈ ${MINUTES[n]} min</span>${n ? `<span title="Runs that passed, of 16 models × ${tasks.length} task${tasks.length > 1 ? "s" : ""}">${PASSED[n]} of ${16 * tasks.length} runs pass</span>` : ""}</p>
           <a class="notes" href="L${pad(n)}/index.html">In preparation</a>
         </div>`).join("") + "</div>").join("");
 

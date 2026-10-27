@@ -22,9 +22,9 @@ const LECTURE = {
   whyTitle: "Why this lecture matters",
   whySub: "Three lessons the MLSys tasks teach",
   why: [
-    ["Estimate, and rank by error", "SVG-EAR keeps an estimate of every block it skips and spends its budget where the estimate is <b>worst</b>, not where the weight is largest."],
+    ["Estimate, and rank by error", "SVG-EAR keeps an estimate of every block it skips and spends its budget where the estimate is <b>worst</b>, not where the weight is largest. The best run used measured error to size its budget."],
     ["Every workload, every metric", "GPT-6 Astra beat the SVG-EAR reference on <b>every mean</b> and still missed five of 48 checks. No model passed SVG-EAR or Continuum."],
-    ["Bound, then be exact", "The FlashLib passes compute approximately, <b>prove</b> how far off they can be, and redo only what lies near the boundary."],
+    ["Bound, then be exact", "Claude Opus 5.5's k-NN, DBSCAN and IVF-PQ passes compute approximately, <b>prove</b> how far off they can be, and redo only what lies near the boundary."],
   ],
   ctaTitle: "Ready to route one query by hand?",
   minutes: "About 80 minutes",
@@ -50,7 +50,7 @@ const CHAPTERS = [
         ${demo("attn", "Demo 1 · One query, two clusters", "choose per cluster")}
         <p>Dropping a cluster loses its weight. Estimating it helps, but only if the right one is estimated. SVG-EAR ranks clusters by how wrong the estimate would be: A's has no error, so it computes B, estimates A, and the toy query comes out exact.</p>` },
       { id: "route", title: "Routing a whole layer", html: `
-        <p>In a real layer the queries form clusters too, and sorting tokens by cluster turns attention into blocks, one per pair of a query cluster and a key cluster. The task uses 300 query clusters for Wan, 400 for HunyuanVideo and 1,000 key clusters. Our model keeps 16 key clusters of 8 keys, from tight to loose, and routes 32 queries one by one. It compares three rules at the same budget: rank by weight and drop the rest (Sparse VideoGen2), rank by weight and estimate the rest, and rank by error and estimate the rest (SVG-EAR). The error of a block is the case study's signal: the summed squared gap between the centroid estimate and each key, <code>Σ ‖e^{s̄} v̄ − e^{s_j} v_j‖²</code>.</p>
+        <p>In a real layer the queries form clusters too, and sorting tokens by cluster turns attention into blocks, one per pair of a query cluster and a key cluster. The task uses 300 query clusters for Wan, 400 for HunyuanVideo and 1,000 key clusters. Our model keeps 16 key clusters of 8 keys, from tight to loose, and routes 32 queries one by one. It compares three rules at the same budget: rank by weight and drop the rest (Sparse VideoGen2), rank by weight and estimate the rest, and rank by error and estimate the rest (SVG-EAR). The error of a block is the case study's signal: the summed squared gap between the centroid estimate and each key, <code>Σ ‖e^{s̄} v̄ − e^{s_j} v_j‖²</code>. The paper divides it by the block's token pairs; our clusters are all the same size, so we skip that.</p>
         ${code("route")}
         ${demo("route", "Demo 2 · Three routing rules", "move the sliders")}
         <p>The table gives the mean gap from full attention. At every budget, estimating beats dropping, and ranking by error beats ranking by weight. In the paper the budget comes from Sparse VideoGen2: the token pairs in the blocks that hold 90% of the estimated weight.</p>` },
@@ -63,7 +63,7 @@ const CHAPTERS = [
     slug: "2-svg-ear-results", nav: "48 checks", title: "SVG-EAR: 48 Checks, No Pass",
     subtitle: "Faster was within reach; matching the reference's image quality on every clip was not",
     abstract: "Twelve hidden clips, four bars each: 4% faster than the reference, and PSNR, SSIM and LPIPS within small margins of it. No model passed. GPT-6 Astra measured its own error per head and added a variance term the paper leaves out; it missed five checks.",
-    tags: ["PSNR", "SSIM", "LPIPS", "variance correction", "FDI 88.5"],
+    tags: ["PSNR", "SSIM", "LPIPS", "variance correction"],
     hero: "code:checks", heroCaption: "The four bars of one clip",
     sections: [
       { id: "judged", title: "How it is judged", html: `
@@ -80,13 +80,13 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Sol</td><td>942</td><td>0.172</td><td>25.4</td><td>0.808</td><td>38.4</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>804</td><td>0.223</td><td>21.5</td><td>0.757</td><td>37.4</td><td>${fail}</td></tr></table>
         <p class="meta">Means over the twelve hidden clips, as of October 26, 2026. No model passed; 13 of 16 scored above the human reference. <a href="${TASK}svg-ear" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p><b>GPT-6 Astra</b> kept the design and changed how it runs. Every fourth denoising step it takes 32 query tokens as probes, computes their exact attention, and rebuilds them the sparse way under caps of 12%, 25% and 50% of the keys. Each head runs at the lowest cap whose error stays under a bound, and a head that fails even at 50% runs dense attention until the next check.</p>
+        <p><b>GPT-6 Astra</b> kept the design and changed how it runs. Every fourth denoising step it takes 32 query tokens as probes, computes their exact attention, and rebuilds them the sparse way under caps of 12%, 25% and 50% of the keys. Each head runs at the lowest cap whose error stays under a bound, and a head that fails even at 50% runs dense attention until the next check. Inside its cap it ranks blocks by estimated weight, the older Sparse VideoGen2 rule, until they hold 98% of the weight. So the best run did not rank by error: measuring the error set its budget.</p>
         <p>It also added a term the paper leaves out. A score is linear in the key, but <code>e^x</code> bends upward, so the average of <code>e^{s_j}</code> is never below <code>e^{s̄}</code>: the centroid guesses low. A second-order expansion gives the fix, <code>e^{s̄ + σ²/2}</code>, where <code>σ²</code> is the variance of the query's scores over the cluster.</p>
         ${code("variance")}
         <p>The corrected estimate overshoots here, but it lands far closer than 5.44. Astra tries the term at 0, ½, 1 and 1½ times its size on each head's probes and keeps the best.</p>
-        <p><b>Claude Opus 5.5</b> stayed closest to the paper. It rebuilt the error-aware choice of blocks, and sized the budget by error too: it takes key clusters until they cover 85% of the row's total error. Its k-means starts each step from the previous step's centroids, and FlashInfer's block-sparse kernel computes the chosen pairs and merges in the estimates through their log-sum-exp. It passed all twelve speed checks and 32 of 48 checks in all; its misses were all on image quality.</p>
+        <p><b>Claude Opus 5.5</b> stayed closest to the paper. It rebuilt the error-aware choice of blocks, and sized the budget by error too: it takes key clusters until they cover 85% of the row's total error. Its k-means starts each step from the previous step's centroids, and FlashInfer's block-sparse kernel computes the chosen pairs and merges in the estimates through their log-sum-exp (the log of a row's summed weights, which lets two partial softmaxes be combined). It passed all twelve speed checks and 32 of 48 checks in all; its misses were all on image quality.</p>
         <p><b>GPT-6.1 Sol</b> ran exact attention. Its image quality was the best of any run, and it lost all twelve speed checks. It also served as a yardstick: exact attention missed six image checks, five of them the ones Astra missed. (<a href="${CASE}" target="_blank" rel="noopener">case study ↗</a>)</p>
-        ${callout("pitfall", "FIDELITY DECIDED THE TASK", "<p>Seven runs beat the reference's time on every clip, but no run passed all 36 image checks. Wan clip 3 stopped every run the case study examined.</p>")}` },
+        ${callout("pitfall", "FIDELITY DECIDED THE TASK", "<p>Of the twelve runs in the case study, seven beat the reference's time on every clip, but no run passed all 36 image checks. Wan clip 3 stopped every run the case study examined.</p>")}` },
     ],
     takeaways: ["48 checks; a pass needs all.", "The centroid guesses low: add σ²/2.", "Fidelity, not speed, decided it."],
   },
@@ -94,7 +94,7 @@ const CHAPTERS = [
     slug: "3-continuum", nav: "Continuum", title: "Continuum: Keeping the Cache Between Turns",
     subtitle: "Serving agents that call a model in many turns, with a tool call between turns",
     abstract: "vLLM frees a request's KV cache when it ends, so after each tool call the context may be computed again, and other conversations cut in. Continuum holds the cache for a time-to-live and serves whole conversations first come, first served. No model passed.",
-    tags: ["vLLM", "KV cache", "time-to-live", "tail latency", "FDI 81.8"],
+    tags: ["vLLM", "KV cache", "time-to-live", "tail latency"],
     hero: "serveMini", heroCaption: "The same six conversations, vLLM and Continuum in turn.",
     sections: [
       { id: "idea", title: "Multi-turn agents", html: `
@@ -103,7 +103,7 @@ const CHAPTERS = [
         <p>Our server runs one request at a time. A request computes its uncached prompt tokens at 4,000 a second, then spends one second on its 300-token reply. The cache holds 14,000 tokens. Six conversations arrive in the first six seconds, each with three or four turns and a tool pause after each reply. vLLM serves requests in the order they become ready and evicts the least recently used cache; Continuum serves the oldest conversation first and holds a finished turn's cache until its TTL runs out.</p>
         ${code("serve")}
         ${demo("serve", "Demo 3 · Six conversations on one server", "pick a policy, move the TTL")}
-        <p>Ordering by conversation alone lowers the mean; the TTL then cuts recomputation by more than half. Here every tool pause is at most 7 s, so any TTL above that changes nothing. In the real system a held cache is memory other requests cannot use, which is why the TTL is chosen with care.</p>` },
+        <p>Ordering by conversation alone lowers the mean; the TTL then cuts recomputation by more than half. Here any TTL of 5 s or more gives the same result. In the real system a held cache is memory other requests cannot use, which is why the TTL is chosen with care.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task starts from unmodified vLLM 0.11.0 serving Qwen3-Coder-30B-A3B on one H100. The agent may change vLLM's Python code for scheduling and serving: the scheduler, the KV-cache manager, the engine and the server. Kernels, the model and the workloads stay fixed.</p>
         <p>Each submission serves 48 SWE-bench coding conversations and 155 BFCL tool-calling conversations, each at a public and a hidden load, with real tools. To pass, in all four groups it must beat the human reference on the geometric mean of conversation latency and at the 90th, 95th and 99th percentiles, and solve at least the reference's median count minus <code>max(1, ceil(0.05 N))</code>. The score compares with unmodified vLLM instead: a latency score <code>L(S)</code> per workload, cut if accuracy falls by more than 5 points and more than 5% of vLLM's, then 0.8 × SWE + 0.2 × BFCL.</p>
@@ -118,7 +118,7 @@ const CHAPTERS = [
         <tr><td>Claude Opus 5.5</td><td>17.3</td><td>118</td><td>126</td><td>4,990</td><td>1.03</td><td>19.1</td><td>${fail}</td></tr></table>
         <p class="meta">Means over the hidden groups, as of October 26, 2026. No model passed; 10 of 16 scored above the human reference. <a href="${TASK}continuum" target="_blank" rel="noopener">Full table ↗</a></p>
         <p><b>Claude Opus 5.5</b> rebuilt Continuum. Its scheduler groups requests into conversations by their prompts alone, through the hash vLLM's prefix cache gives each full block, and orders waiting requests by when their conversation began. When a turn finishes it holds the conversation's cache for a TTL set from the last 256 pauses: 10 seconds until eight pauses are seen, then twice the 90th-percentile pause plus one second, within 2 to 30 seconds. An expired hold frees nothing until memory runs short; then holds are released, expired ones first. Before a large hold is released, it is copied to host memory and copied back when the conversation returns.</p>
-        ${callout("pitfall", "ONE SLOW CONVERSATION SINKS A TAIL", "<p>Claude Opus 5.5's 99th percentile was 4,990 s against the reference's 183. The tail checks use the slowest few conversations, so one stuck conversation fails them however good the mean is.</p>")}` },
+        ${callout("pitfall", "ONE SLOW CONVERSATION CAN SINK A TAIL", "<p>Claude Opus 5.5's 99th percentile was 4,990 s against the reference's 183 (a mean over the hidden groups); the task page does not say why. With 48 SWE conversations, p99 is the slowest one, so a single stuck conversation is enough to fail the check.</p>")}` },
     ],
     takeaways: ["Hold the cache for a TTL.", "Serve conversations, not requests.", "Mean and three tails, in four groups."],
   },
@@ -141,18 +141,18 @@ const CHAPTERS = [
         ${demo("knn", "Demo 4 · Pruning a k-NN search", "change k and the group size")}
         <p>The answer is always exact; how much work it saves depends on k and the group size.</p>` },
       { id: "judged", title: "How the four FlashLib tasks are judged", html: `
-        <p>Each task leaves a plain, slow version as the starter, and the agent writes a fast GPU version in Python and Triton on one H100. The score is <code>L(S)</code> from the Continuum chapter, with <code>S</code> the geometric mean, over the scored workloads, of the median paired speedup over the naive starter. A pass compares with the human reference on every workload, including hidden ones: strictly faster, and quality no worse.</p>
+        <p>Each task leaves a plain, slow version as the starter, and the agent writes a fast GPU version in Python and Triton on one H100. The score is <code>L(S)</code> from the Continuum chapter, with <code>S</code> the geometric mean, over the scored workloads, of the median paired speedup over the naive version (for k-NN, the frozen original cdist/topk; for k-means, the ratio of median latencies). A pass compares with the human reference on every workload, including hidden ones: strictly faster, and quality no worse (k-means has quality bands instead, given below).</p>
         <p>The score formula can be inverted. From the leaderboard's rounded scores:</p>
         ${code("invert")}
         <p>The log scale squeezes large speedups: 75.6 against 80.5 on IVF-PQ is a factor of about ten. The scores are rounded to one decimal, so the high ones are rough.</p>
-        <p>For <b>k-NN</b>, the workloads are SIFT and GIST descriptors, up to 1,000,000 database rows and k up to 256 in hidden shapes. Every timed call must reach ball-recall 0.88. To pass, each workload must be faster than the reference, with worst ball-recall and worst exact recall at least the reference's, and every reported distance within a relative 10<sup>−6</sup> of a direct recomputation.</p>
+        <p>For <b>k-NN</b>, the workloads are SIFT and GIST descriptors, up to 1,000,000 database rows and k up to 256 in hidden shapes. <i>Ball-recall</i> is the share of returned rows no farther than the plain search's k-th distance (plus 10<sup>−6</sup>); <i>exact recall</i> is the same test against the true k-th distance in fp64. Every timed call must reach ball-recall 0.88. To pass, each workload must be faster than the reference, with worst ball-recall and worst exact recall at least the reference's, and every reported distance within a relative 10<sup>−6</sup> of a direct recomputation.</p>
         <table><tr><th>Run</th><th>Latency (ms)</th><th>Worst ball recall</th><th>Worst exact recall</th><th>Final score</th><th></th></tr>
         <tr><td>Human reference</td><td>2.23</td><td>0.948</td><td>1.000</td><td>44.7</td><td></td></tr>
         <tr><td>Claude Opus 5.5</td><td>1.51</td><td>0.948</td><td>1.000</td><td>51.8</td><td>${pass}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>1.84</td><td>0.948</td><td>0.9999</td><td>47.6</td><td>${fail}</td></tr>
         <tr><td>Gemini 4 Argon · Antigravity</td><td>1.95</td><td>0.948</td><td>1.000</td><td>45.4</td><td>${pass}</td></tr></table>
-        <p class="meta">As of October 26, 2026. 2 of 16 passed. <a href="${TASK}knn-kernel" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p>Beyond the bound, Opus recomputed the surviving candidates in double precision so the distances match exactly, replayed a recorded launch plan to skip Python dispatch, and, as its own idea, noticed that SIFT values are whole numbers: shifted by −128 into 8-bit integers, the dot products are exact in 32-bit integer arithmetic.</p>` },
+        <p class="meta">Selected runs, as of October 26, 2026. 2 of 16 passed. <a href="${TASK}knn-kernel" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p>Beyond the bound, Claude Opus 5.5 recomputed the surviving candidates in double precision so every distance matches a direct recomputation, replayed a recorded launch plan to skip Python dispatch, and, as its own idea, noticed that SIFT values are whole numbers: shifted by −128 into 8-bit integers, the dot products are exact in 32-bit integer arithmetic.</p>` },
       { id: "kmeans", title: "One k-means step", html: `
         <p>A Lloyd step sends every point to its nearest center, then moves each center to the mean of its points. The task asks for exactly this step; an empty cluster keeps its old center.</p>
         ${code("kmeans")}
@@ -160,7 +160,7 @@ const CHAPTERS = [
       { id: "tag", title: "A tile number inside a float", html: `
         <p><b>Claude Opus 5.5</b>'s own idea was to write the center tile's number into the lowest mantissa bits of each distance. A plain element-wise minimum over the tiles then carries the winning tile along with the value, with no branches. The bits given up cost a tiny relative error.</p>
         ${code("tag")}
-        <p>The pass rule allows the clustering cost (inertia) to grow by at most 5% and the share of points not at an exact nearest center by at most 0.002, and asks for a faster time on every one of six shapes. 8 of 16 models passed, as many as on IVF-PQ and more than on the other four MLSys tasks. Opus had the best score, 53.8 against the reference's 43.3, at 0.944 ms per Lloyd iteration against 1.96. (<a href="${TASK}kmeans-kernel" target="_blank" rel="noopener">task page ↗</a>)</p>` },
+        <p>The pass rule allows the clustering cost (inertia) to grow by at most 5% and the share of points not at an exact nearest center by at most 0.002, and asks for a faster time on every one of six shapes. 8 of 16 models passed, as many as on IVF-PQ and more than on the other four MLSys tasks. Claude Opus 5.5 had the best score, 53.8 against the reference's 43.3, at 0.944 ms per Lloyd iteration against 1.96. (<a href="${TASK}kmeans-kernel" target="_blank" rel="noopener">task page ↗</a>)</p>` },
     ],
     takeaways: ["Never store the distance table.", "A bound makes pruning exact.", "Score = L(S), S over the naive starter."],
   },
@@ -193,15 +193,15 @@ const CHAPTERS = [
         ${demo("ivf", "Demo 6 · Lists probed against recall", "move the slider")}
         <p><b>Iso-recall</b> compares with the same index searched over every list; <b>nearest-neighbor recall</b> asks whether the true nearest vector is among the k returned.</p>` },
       { id: "ivfpq-results", title: "IVF-PQ: judged, and results", html: `
-        <p>The index is fixed; the public workloads use 8,192 lists, 16 codes per vector and k = 100 on SIFT, and hidden ones reach k = 1,024. Every timed call needs iso-recall 0.99, and to pass each workload must be faster than the reference with both recalls no lower. 8 of 16 passed.</p>
+        <p>The index is fixed; the public workloads use 8,192 lists, <code>m</code> = 16 parts per vector (16 one-byte codes) and k = 100 on SIFT, and hidden ones reach k = 1,024. Every timed call needs iso-recall 0.99, and to pass each workload must be faster than the reference with both recalls no lower. 8 of 16 passed.</p>
         <table><tr><th>Run</th><th>Iso-recall</th><th>NN recall</th><th>Latency (ms)</th><th>Final score</th><th></th></tr>
         <tr><td>Human reference</td><td>1</td><td>0.967</td><td>151</td><td>75.6</td><td></td></tr>
         <tr><td>Claude Opus 5.5</td><td>1</td><td>0.967</td><td>1.73</td><td>80.5</td><td>${pass}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>1</td><td>0.967</td><td>3.41</td><td>79.8</td><td>${pass}</td></tr>
         <tr><td>DeepSeek V4.1 Flash</td><td>1</td><td>0.967</td><td>19.4</td><td>78.7</td><td>${fail}</td></tr></table>
-        <p class="meta">As of October 26, 2026. <a href="${TASK}ivf-pq-kernel" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected runs, as of October 26, 2026. <a href="${TASK}ivf-pq-kernel" target="_blank" rel="noopener">Full table ↗</a></p>
         <p><b>Claude Opus 5.5</b> grouped the query–list pairs by list, so each list's codes are decoded once and compared with every query that probes it as one matrix product. Every fast pass carries an error bound, and anything near a boundary is recomputed with the plain search's own arithmetic, so its output matches the slow search exactly.</p>
-        ${callout("pattern", "EXACT, BUT FAST", "<p>The FlashLib passes share one move: a fast approximate pass with a proven error bound, then exact arithmetic only near the boundary. The answer is the plain version's, bit for bit, and the bound decides how little must be recomputed.</p>")}` },
+        ${callout("pattern", "EXACT, BUT FAST", "<p>Claude Opus 5.5's k-NN, DBSCAN and IVF-PQ passes share one move: a fast approximate pass with a proven error bound, then exact arithmetic only near the boundary. The bound decides how little must be recomputed. (Its k-means pass needs no such step: a matrix product and an exact running minimum. The task pages do not describe the other passing runs.)</p>")}` },
     ],
     takeaways: ["ARI ignores numbering; check noise too.", "Probe few lists, look codes up in a table.", "Approximate, bound, then exact."],
   },
@@ -247,17 +247,17 @@ const CHAPTERS = [
 const QUIZ = [
   { q: "A skipped cluster has two keys with scores 0 and 2. SVG-EAR estimates it from the average key. How does the estimate compare with the true weight?",
     opts: ["It is exact", "It is too low: e<sup>x</sup> bends upward, so the average of e<sup>s</sup> exceeds e<sup>s̄</sup>", "It is too high", "It is zero"],
-    a: 1, why: "True weight 1 + e² ≈ 8.39; the estimate 2e¹ ≈ 5.44. The centroid always guesses low; Astra's variance term corrects most of it." },
+    a: 1, why: "True weight 1 + e² ≈ 8.39; the estimate 2e¹ ≈ 5.44. The centroid never guesses high; Astra's variance term corrects most of it." },
   { q: "With room to compute one of two clusters, why does SVG-EAR compute the one whose estimate is worst?",
-    opts: ["It has the most keys", "Estimating the other costs nothing in accuracy if its estimate is good", "It has the largest weight", "It is the first in video order"],
-    a: 1, why: "A cluster whose keys score alike is estimated exactly, so computing it wastes the budget. Ranking by error spends it where the estimate fails." },
+    opts: ["Estimating the other costs nothing in accuracy if its estimate is good", "It has the most keys", "It has the largest weight", "It is the first in video order"],
+    a: 0, why: "A cluster whose keys score alike is estimated exactly, so computing it wastes the budget. Ranking by error spends it where the estimate fails." },
   { q: "GPT-6 Astra beat the SVG-EAR reference on all four means. Why did it fail?",
-    opts: ["It was slower on average", "The pass rule is clip by clip: it missed five of the 48 checks", "It cost too much", "Its score was below the reference's"],
-    a: 1, why: "A pass needs all 48 checks. Astra missed PSNR, SSIM and LPIPS on Wan clip 3 and two more on Wan clip 6." },
+    opts: ["It was slower on average", "It cost too much", "The pass rule is clip by clip: it missed five of the 48 checks", "Its score was below the reference's"],
+    a: 2, why: "A pass needs all 48 checks. Astra missed PSNR, SSIM and LPIPS on Wan clip 3 and two more on Wan clip 6." },
   { q: "What does Continuum keep for a time-to-live after a turn ends?",
     opts: ["The model weights", "The conversation's KV cache, so the next turn need not compute the context again", "The tool's output", "The request queue"],
     a: 1, why: "After a tool call the next turn extends the same context. Keeping its cache saves recomputing it." },
   { q: "In the k-NN bound, groups keep their two smallest distances. Why is the k-th smallest group minimum a safe bound?",
-    opts: ["It is an average", "Those k minima are k real rows, so the true k-th distance is at most that value", "It is always the true k-th distance", "It is computed in double precision"],
-    a: 1, why: "Any k real rows give an upper bound on the k-th nearest distance. Rows above the bound cannot be in the answer." },
+    opts: ["It is an average", "It is always the true k-th distance", "It is computed in double precision", "Those k minima are k real rows, so the true k-th distance is at most that value"],
+    a: 3, why: "Any k real rows give an upper bound on the k-th nearest distance. Rows above the bound cannot be in the answer." },
 ];

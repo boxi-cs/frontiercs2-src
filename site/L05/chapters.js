@@ -24,7 +24,7 @@ const LECTURE = {
   why: [
     ["Theory sets the size", "The lower bound is <b>log2(1/ε) bits per key</b>. Bloom filters spend 44% more, xor filters 23%, binary fuse filters <b>13%</b>."],
     ["Peeling is simple and fragile", "It works only above a <b>threshold</b> of slots per key, and never with a repeated key."],
-    ["Every workload must win", "The passing runs <b>halved construction time</b>. One slow lookup stream out of 144 was enough to fail."],
+    ["Every workload must win", "The best run <b>halved construction time</b>; every passing run built faster on all 144 workloads. Losing lookup on one workload was enough to fail."],
   ],
   ctaTitle: "Ready to build a filter?",
   minutes: "About 60 minutes",
@@ -73,7 +73,7 @@ const CHAPTERS = [
         <p>Each key is an edge joining three slots: the keys form a <b>3-hypergraph</b> on the slots. Filling <code>B</code> means solving one XOR equation per key. <b>Peeling</b> solves them without any algebra:</p>
         <ol><li>Count, for every slot, how many keys use it, and keep the XOR of those keys.</li>
         <li>A slot used by exactly one key belongs to that key alone. Remove the key from its three slots (the XOR of the remaining keys tells exactly which key it was) and remember the pair (key, slot). Removing it may leave other slots with one key; repeat.</li>
-        <li>If every key was removed, go back through them in <b>reverse</b> order. Each key's own slot is still free, so set it to whatever makes the key's equation hold. Keys peeled earlier only touch slots that are set later, so no equation is broken.</li></ol>
+        <li>If every key was removed, go back through them in <b>reverse</b> order. Each key's own slot is still free, so set it to whatever makes the key's equation hold. No key peeled after a key uses that key's own slot, and those keys were assigned first: going backward, each key's other two slots are already final when its own slot is set, so no equation that already holds is broken.</li></ol>
         ${code("build")}
         <p>Here are 8 keys in 12 slots. The first seed that peels completely is kept; a real filter retries with a new seed in the same way.</p>
         ${code("small")}
@@ -98,18 +98,18 @@ const CHAPTERS = [
     sections: [
       { id: "layout", title: "The layout", html: `
         <p>The binary fuse filter changes only where a key's three slots go. The table is cut into many equal <b>segments</b> of length <code>L</code>, a power of two. A key picks one starting segment at random, and its three slots lie in that segment and the next two, at random offsets. This layout comes from the <b>fuse graphs</b> of Dietzfelbinger and Walzer (2019).</p>
-        <p>The library's public header chooses the segment length and the number of slots per key from the number of keys <code>n</code>. Here are its formulas, for three slots per key:</p>
+        <p>The library's public header chooses the segment length and the number of slots per key from the number of keys <code>n</code>. Here are its formulas, for three slots per key and 2 up to a few million keys (the header also caps the segment length, and treats n ≤ 1 apart):</p>
         ${code("layout")}
         <p>(The real hash places the first slot anywhere in the first <code>starts</code> segments, then shifts by whole segments and scrambles the low bits. Ours picks a segment and three offsets; the shape is the same.)</p>` },
       { id: "fewer", title: "Peeling with fewer slots", html: `
-        <p>At 200,000 keys the header asks for 1.167 slots per key. An xor filter of that size cannot peel; the same keys in the fuse layout can:</p>
+        <p>At 200,000 keys the header's layout gives 1.167 slots per key. An xor filter of that size cannot peel; the same keys in the fuse layout can:</p>
         ${code("fusevsxor")}
         ${predict("The header gives 10,000 keys 1.254 slots per key, more than an xor filter's 1.23. Why would a small filter need more?", "<p>The fuse layout's advantage grows with the number of segments. A small table has few of them, and peeling needs a safety margin, so the header adds slots. At a million keys the factor falls to 1.13.</p>")}` },
       { id: "fuse", title: "Why it is called a fuse", html: `
         <p>The first segment can only hold a key's first slot, and the last segment only its third slot, so the two ends are thinly used. Peeling starts there, and each removed key frees slots one segment further in, like a fuse burning toward the middle. Here is the average peeling time of each segment, as a percentage of the whole run, for 2,000 keys:</p>
         ${code("burn")}
         ${demo("fuse", "Demo 4 · Watch the fuse burn", "replay or switch layout", "Each bar is 16 slots; its height is how many of them have been peeled so far.")}
-        <p>The ends finish first and the middle last. Because a key's three slots are close together, the table is also friendlier to the cache, which is one reason construction can be more than twice as fast as for xor filters (paper's abstract).</p>` },
+        <p>The ends finish first and the middle last. Because a key's three slots are close together, the work stays in a small part of the table at a time, which helps the cache. The paper's abstract reports construction more than twice as fast as for xor filters.</p>` },
     ],
     takeaways: ["Three slots in three consecutive segments.", "Thin ends peel first and burn inward.", "1.13 slots per key at a million keys."],
   },
@@ -123,16 +123,16 @@ const CHAPTERS = [
       { id: "writes", title: "What the agent writes", html: `
         <p>The task keeps the library's allocation, lookup and serialization, and removes the <b>population</b> routines, the step that fills the table, for 8-bit and 16-bit fingerprints. (The xor filter's construction is removed too, so it cannot serve as an answer; it is not scored.) The agent writes <code>binary_fuse8_populate</code> and <code>binary_fuse16_populate</code>. It may also change the filter's struct, its hash and its lookup, changing up to 32 files under <code>include/</code>, as long as the API stays the same and every byte the filter keeps is allocated through <code>malloc</code> and friends, where the evaluator counts it.</p>` },
       { id: "judged", title: "How it is judged", html: `
-        <p>Filters hold 10,000, 100,000 or 1,000,000 distinct keys from three families of key patterns, with both fingerprint widths. Each answers four query streams: 0%, 50%, 25% and 100% stored keys. With a development seed and a private one, that makes 144 workloads. Every stored key must be found, and false positives must stay under an allowance. For <code>m</code> absent queries and <code>b</code>-bit fingerprints:</p>
+        <p>Filters hold 10,000, 100,000 or 1,000,000 distinct keys from three families of key patterns, with both fingerprint widths. Each answers four query streams: 0%, 50%, 25% and 100% stored keys. With a development seed and a private one, that makes 144 workloads. Every stored key must be found, and false positives must stay under an allowance. For <code>m</code> absent queries and <code>b</code>-bit fingerprints (the 25% stream uses <code>400/4e-8</code> in place of <code>1200/1e-6</code>):</p>
         ${code("allowance")}
-        <p>Five metrics are measured against the human reference (the authors' library) on the same machine, five times each: <b>memory</b> kept by the filter, <b>construction time</b>, <b>lookup time</b> per query, the <b>false-positive rate</b>, and the <b>space overhead</b> <code>100 × (bits per key / log2(1/ε) − 1)</code>. The reference's memory follows from its layout. Its table has one byte per slot (two at 16 bits), plus a 40-byte struct:</p>
+        <p>Five metrics are measured against the human reference (the authors' library) on the same machine, in five paired repetitions (memory is the maximum over them, times are medians): <b>memory</b> kept by the filter, <b>construction time</b>, <b>lookup time</b> per query, the <b>false-positive rate</b>, and the <b>space overhead</b> <code>100 × (bits per key / log2(1/ε) − 1)</code>. The reference's memory follows from its layout. Its table has one byte per slot (two at 16 bits), plus a 40-byte struct:</p>
         ${code("memory")}
         <p>These match the leaderboard's reference row closely: 616.2 KiB, a measured 1.964 × 10<sup>−3</sup>, and 19.1% measured overhead (ours uses the nominal rate). Small filters pay more overhead, since the header gives them more slots per key.</p>` },
       { id: "score", title: "The pass rule and the score", html: `
         <p><b>Pass rule.</b> To pass, a run must be strictly better than the reference on memory, construction time and lookup time on <b>every</b> workload, and the false-positive rate and space overhead must not be measurably worse (a statistical guard against private anchors). The <b>score</b> is the mean of <code>100 × R / (C + R)</code> over all workloads and the three timed or counted metrics, where <code>C</code> is the run's value and <code>R</code> the reference's. A copy of the reference scores about 50. With the means of Claude Opus 5.5's run and of the reference measured in that run:</p>
         ${code("score")}
         ${demo("score", "Demo 5 · Score one workload", "edit the numbers")}
-        <p>The task page gives 57.2. Twice as fast a build is worth 66.7 on that metric; a tie is worth 50. The memory term is nearly a tie: the table's size is fixed by the layout, so the only bytes to win are in the struct.</p>` },
+        <p>Computed from means, this only approximates the per-workload average; the task page gives 57.2. Twice as fast a build is worth 66.7 on that metric; a tie is worth 50. The memory term is nearly a tie: with the reference's layout, only the struct's bytes can be won, which is what the passing runs did (616.1 KiB). Some runs shrank the table itself (Muse Spark 1.3: 611.0 KiB, 17.3% overhead), but none of them passed.</p>` },
       { id: "results", title: "What the agents did", html: `
         <p>Three of sixteen models passed; fourteen scored above the human reference (50.0). FDI 48.3 puts the task 29th hardest of 48.</p>
         <table><tr><th>Run</th><th>Build (ms)</th><th>Lookup (ns)</th><th>Memory (KiB)</th><th>FPR (×10<sup>−3</sup>)</th><th>Overhead (%)</th><th>Score</th><th></th></tr>
@@ -142,7 +142,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Sol</td><td>14.9</td><td>3.08</td><td>616.1</td><td>1.961</td><td>19</td><td>53.9</td><td>${fail}</td></tr>
         <tr><td>GPT-6 Astra</td><td>14.6</td><td>3.81</td><td>616.1</td><td>1.964</td><td>19.3</td><td>52.8</td><td>${pass}</td></tr>
         <tr><td>Kimi K3</td><td>15.8</td><td>3.84</td><td>616.2</td><td>1.964</td><td>19.2</td><td>50.4</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the 144 hidden workloads, as of October 26, 2026. <a href="${TASK}${SLUG}" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows: the three passing runs and two instructive fails. Means over the 144 hidden workloads, as of October 26, 2026. <a href="${TASK}${SLUG}" target="_blank" rel="noopener">Full table ↗</a></p>
         <p><b>Claude Opus 5.5</b> had the best score. Its solution, from the task page, has five parts:</p>
         <ol><li><em>Hash and layout.</em> Multiply the key by a random odd seed and fold the two halves of the 128-bit product. The high half picks the first slot; the fingerprint comes from other bits of the same product. The struct keeps fewer fields, which is where the memory win comes from.</li>
         <li><em>Counting and peeling.</em> For every slot, a count and the XOR of the keys' hashes, as in our <code>build</code>. The peeling queue is filled without branches, so the processor can overlap the work.</li>
@@ -153,7 +153,7 @@ const CHAPTERS = [
         <p>The task promises distinct keys, but a robust construction must not loop forever if a key repeats. Two copies of a key always share all three slots: each slot counts at least 2, and their XOR cancels. They can never be peeled, whatever the seed.</p>
         ${code("dup")}
         <p>Checking for repeats means sorting, which is slow, so Claude Opus 5.5 sorts only when a failed attempt leaves a slot whose two keys have equal hashes, or after a few failures.</p>
-        ${callout("pitfall", "A TIE IS NOT A WIN", "<p>Kimi K3, Gemini 4 Argon · Pi and Step 5 Preview kept exactly the reference's memory, 616.2 KiB, and so won memory on 0 of 144 workloads. GPT-6.1 Sol had the fastest lookups on average (3.08 ns) but was slower than the reference on 1 of 144 workloads, and failed.</p>")}` },
+        ${callout("pitfall", "A TIE IS NOT A WIN", "<p>Kimi K3, Gemini 4 Argon · Pi and Step 5 Preview kept exactly the reference's memory, 616.2 KiB, and so won memory on 0 of 144 workloads. (Kimi K3.1 Pro also shows 616.2 KiB after rounding, but won memory on all 144.) GPT-6.1 Sol had the fastest lookups on average (3.08 ns) but did not beat the reference on 1 of 144 workloads, and failed; GLM 5.3, GLM 5.3 Flash and Muse Wonder 1.0 also lost lookup on only one or two.</p>")}` },
     ],
     takeaways: ["The agent writes populate, for 8 and 16 bits.", "Win memory, build and lookup on all 144 workloads.", "Best: Claude Opus 5.5, 57.2; 3 of 16 pass."],
   },
@@ -180,8 +180,8 @@ const CHAPTERS = [
         <h3>Exercise 3 ★★ (experiment)</h3>
         <p>In the threshold experiment, use 20,000 keys. Is the cliff sharper?</p>
         <h3>Exercise 4 ★★ (modify)</h3>
-        <p>Use <code>xor_where</code> with 1.17 slots per key for the 200,000 keys, and <code>fuse_where</code> with 1.10. What happens, and why?</p>
-        <details class="reveal"><summary>Solution</summary><p>Both get stuck. 1.17 is below the xor filter's threshold of about 1.222, and 1.10 is below what the fuse layout needs at 200,000 keys; only with many more keys does its threshold approach 1.125 and below.</p></details>
+        <p>Use <code>xor_where</code> with 1.17 slots per key for the 200,000 keys, and <code>fuse_where</code> with 1.10 (set <code>capacity = round(1.10 * n)</code> in <code>fuse_layout</code>). What happens, and why?</p>
+        <details class="reveal"><summary>Solution</summary><p>Both get stuck. 1.17 is below the xor filter's threshold of about 1.222. With only 57 segments, the thinly used end segments waste slots, so the fuse layout needs more than 1.10 at 200,000 keys (it gets stuck at 1.125 too, and peels at the header's 1.167). The fuse threshold falls toward about 1.1 only as the number of segments grows, which is why the header never goes below 1.125.</p></details>
         <h3>Exercise 5 ★ (by hand)</h3>
         <p>A run builds twice as fast, looks up 10% slower and ties on memory. What is its score on one workload, and does it pass?</p>
         <details class="reveal"><summary>Solution</summary><p>(66.7 + 47.6 + 50.0) / 3 = 54.8, above the reference's 50. It fails twice over: it loses lookup time, and a tie on memory is not a win.</p></details>` },
@@ -202,15 +202,15 @@ const QUIZ = [
     opts: ["8", "16", "23", "65,536"],
     a: 1, why: "log2(1/ε) = log2(65,536) = 16. A Bloom filter would need about 1.44 × 16 = 23." },
   { q: "During peeling, a slot has count 1 and mask 0x2A71. What does that tell you?",
-    opts: ["The slot is empty", "The only key left in the slot is 0x2A71", "Two keys cancel there", "Peeling is stuck"],
-    a: 1, why: "The mask is the XOR of the keys still using the slot. With one key left, the mask is that key." },
+    opts: ["The slot is empty", "Two keys cancel there", "The only key left in the slot is 0x2A71", "Peeling is stuck"],
+    a: 2, why: "The mask is the XOR of the keys still using the slot. With one key left, the mask is that key." },
   { q: "Why does the second phase assign slots in <b>reverse</b> peeling order?",
-    opts: ["It is faster in memory", "A key's own slot is untouched by keys peeled before it, so setting it last breaks no equation", "To shuffle the keys", "The fingerprints are sorted"],
-    a: 1, why: "Keys peeled earlier only use slots that later keys still share; going backward, each key's own slot is set after its other two are final." },
+    opts: ["No key peeled after a key uses its own slot, so setting that slot last breaks no equation", "It is faster in memory", "To shuffle the keys", "The fingerprints are sorted"],
+    a: 0, why: "Going backward, a key's other two slots are already final, and its own slot belongs to no key assigned before it." },
   { q: "What lets a binary fuse filter peel with fewer slots per key than an xor filter?",
-    opts: ["Longer fingerprints", "Its three slots lie in three consecutive segments, so peeling starts at the thin ends and spreads", "It uses four slots per key", "It sorts the keys first"],
-    a: 1, why: "The end segments are thinly used, so peeling always has a start there and burns inward like a fuse." },
+    opts: ["Longer fingerprints", "It uses four slots per key", "It sorts the keys first", "Its three slots lie in three consecutive segments, so peeling starts at the thin ends and spreads"],
+    a: 3, why: "The end segments are thinly used, so peeling always has a start there and burns inward like a fuse." },
   { q: "GPT-6.1 Sol had the fastest mean lookup time. Why did it fail?",
-    opts: ["Too many false positives", "It was slower than the reference on 1 of 144 workloads", "It used more memory", "Its score was below 50"],
-    a: 1, why: "A pass needs a strict win on every metric of every workload. One slow lookup stream is enough to fail." },
+    opts: ["Too many false positives", "It did not beat the reference on 1 of 144 workloads", "It used more memory", "Its score was below 50"],
+    a: 1, why: "A pass needs a strict win on every metric of every workload. Losing lookup on one workload is enough to fail." },
 ];

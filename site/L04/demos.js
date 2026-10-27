@@ -115,8 +115,8 @@ const periodPs = (luts, start = "register") => 300 + START_PS[start] + 500 * lut
 function demoClock(el) {
   const presets = [
     ["Reference, small trees", "memory", 3],
-    ["Gemini 4 Argon", "memory", 1],
-    ["Claude Opus 5.5", "register", 3],
+    ["Gemini 4 Argon · Pi", "memory", 1],
+    ["Opus 5.5: no memory (illustrative)", "register", 3],
   ];
   el.innerHTML = `<div class="svgbox stretch"></div>
     <div class="controls">

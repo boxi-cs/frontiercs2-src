@@ -32,6 +32,15 @@ function mountDemos(root) {
   });
 }
 
+// Previous / next lecture, from COURSE.lectures (course.js): [[number, title], ...] in course order.
+const pad2 = (n) => String(n).padStart(2, "0");
+function lectureAt(step) {
+  const list = C.lectures || [];
+  const k = list.findIndex(([n]) => n === LECTURE.number);
+  return k < 0 ? null : list[k + step] || null;
+}
+const lectureHref = ([n]) => `../L${pad2(n)}/index.html`;
+
 function stopTimers() {
   // Demos use setInterval; clear every interval when the page changes.
   const max = setInterval(() => {}, 1000);
@@ -88,6 +97,7 @@ function renderHome() {
       <h2>${L.ctaTitle}</h2>
       <a class="btn primary" href="#/${CHAPTERS[0].slug}">Chapter 1 · ${CHAPTERS[0].title} →</a>
       <p class="meta" style="margin-top:16px">${L.minutes} · best on a laptop for the demos · ${C.practice}</p>
+      <p class="meta lecnav">${lectureAt(-1) ? `<a href="${lectureHref(lectureAt(-1))}">← L${pad2(lectureAt(-1)[0])} · ${lectureAt(-1)[1]}</a>` : ""}${lectureAt(1) ? `<a href="${lectureHref(lectureAt(1))}">L${pad2(lectureAt(1)[0])} · ${lectureAt(1)[1]} →</a>` : ""}</p>
     </section>
   </div>`;
   mountDemos(main);
@@ -136,7 +146,7 @@ function renderChapter(k) {
         <div class="takeaways">${c.takeaways.map((t, j) => `<div class="card"><b>${j + 1}</b>${t}</div>`).join("")}</div>
         <div class="pager" style="margin-top:28px">
           ${prev ? `<a class="card" href="#/${prev.slug}"><small>← Previous · ${pad(k - 1)}</small><b>${prev.title}</b></a>` : `<a class="card" href="#/"><small>← Back</small><b>Home</b></a>`}
-          ${next ? `<a class="card next" href="#/${next.slug}"><small>Next · ${pad(k + 1)} →</small><b>${next.title}</b></a>` : `<a class="card next" href="#/"><small>Done →</small><b>Back to this lecture&rsquo;s overview</b></a>`}
+          ${next ? `<a class="card next" href="#/${next.slug}"><small>Next · ${pad(k + 1)} →</small><b>${next.title}</b></a>` : (lectureAt(1) ? `<a class="card next" href="${lectureHref(lectureAt(1))}"><small>Next lecture →</small><b>L${pad2(lectureAt(1)[0])} · ${lectureAt(1)[1]}</b></a>` : `<a class="card next" href="../index.html"><small>Done →</small><b>All lectures</b></a>`)}
         </div>
       </article>
     </div>

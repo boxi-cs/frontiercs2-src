@@ -117,7 +117,7 @@ function render(part) {
       const fix = show([node[0] === "+" && inner[0] === "+" ? "+" : "*", inner[1]]);
       if (differ(part, fix) === null && attacked(fix) === null) return `\`${part}\` -> replace with \`${fix}\``;
     }
-    if (inner[0] === "alt") return `\`${part}\` (a repeated choice whose branches overlap: merge them)`;
+    if (inner[0] === "alt") return `\`${part}\` (a repeated choice that splits strings in several ways: merge or drop branches)`;
   }
   return `\`${part}\` (rewrite it so each string has one parse)`;
 }
@@ -143,6 +143,8 @@ function sample(node, rng) {
   return out;
 }
 
+// The Python q_score calls matches directly; every input in the notes stays under the budget.
+// Typed repairs may not, so the demo counts a sample that runs out of budget as no match.
 const safeMatch = (tree, s) => { try { return matches(tree, s)[0]; } catch (e) { return false; } };
 
 function qScore(original, repair, seed = 42) {
@@ -311,10 +313,11 @@ function demoRender(el) {
   const draw = () => {
     const part = input.value.trim(), err = checkPattern(part);
     if (err) { out.textContent = ""; msg.className = "msg bad"; msg.textContent = err; return; }
-    const line = render(part), pump = attacked(part);
-    out.innerHTML = `<small>Vulnerable part(s):</small> <code>${line.replace(/`/g, "")}</code>`;
+    const pump = attacked(part);
+    // RegexScalpel localizes only vulnerable parts, so a safe part gets no prompt line.
+    out.innerHTML = pump ? `<small>Vulnerable part(s):</small> <code>${render(part).replace(/`/g, "")}</code>` : "";
     msg.className = `msg ${pump ? "" : "good"}`;
-    msg.textContent = pump ? `Our attack tool breaks ${part} with the pump "${pump}".` : `Our attack tool finds no attack on ${part}; RegexScalpel would not have localized it.`;
+    msg.textContent = pump ? `Our attack tool breaks ${part} with the pump "${pump}".` : `Our attack tool finds no attack on ${part}: RegexScalpel would not localize it, so the prompt gets no line for it.`;
   };
   el.querySelectorAll(".cbtn").forEach((b) => { b.onclick = () => { input.value = b.dataset.p; draw(); }; });
   input.oninput = draw;

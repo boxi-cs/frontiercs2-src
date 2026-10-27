@@ -180,8 +180,9 @@ means solving one XOR equation per key. **Peeling** solves them without any alge
    (the XOR of the remaining keys tells exactly which key it was) and remember the pair
    (key, slot). Removing it may leave other slots with one key; repeat.
 3. If every key was removed, go back through them in **reverse** order. Each key's own slot is still
-   free, so set it to whatever makes the key's equation hold. Keys peeled earlier only touch slots
-   that are set later, so no equation is broken.
+   free, so set it to whatever makes the key's equation hold. No key peeled after a key uses that
+   key's own slot, and those keys were assigned first: going backward, each key's other two slots
+   are already final when its own slot is set, so no equation that already holds is broken.
 
 ```python
 def build(keys, size, where, fingerprint):
@@ -309,7 +310,8 @@ three slots lie in that segment and the next two, at random offsets. This layout
 ## The layout
 
 The library's public header chooses the segment length and the number of slots per key from the
-number of keys `n`. Here are its formulas, for three slots per key:
+number of keys `n`. Here are its formulas, for three slots per key and
+2 up to a few million keys (the header also caps the segment length, and treats n ≤ 1 apart):
 
 ```python
 from math import floor, log
@@ -350,7 +352,7 @@ segments and scrambles the low bits. Ours picks a segment and three offsets; the
 
 ## Peeling with fewer slots
 
-At 200,000 keys the header asks for 1.167 slots per key. An xor filter of that size cannot peel; the
+At 200,000 keys the header's layout gives 1.167 slots per key. An xor filter of that size cannot peel; the
 same keys in the fuse layout can:
 
 ```python
@@ -397,8 +399,8 @@ print([round(100 * sum(when[g * seg:(g + 1) * seg]) / seg / len(order)) for g in
 ```
 
 The ends finish first and the middle last. Because a key's three slots are close together, the
-table is also friendlier to the cache, which is one reason construction can be more than twice as
-fast as for xor filters (paper's abstract).
+work stays in a small part of the table at a time, which helps the cache. The paper's abstract
+reports construction more than twice as fast as for xor filters.
 
 # The task: construction, judged five ways
 
@@ -416,7 +418,8 @@ filter keeps is allocated through `malloc` and friends, where the evaluator coun
 Filters hold 10,000, 100,000 or 1,000,000 distinct keys from three families of key patterns, with
 both fingerprint widths. Each answers four query streams: 0%, 50%, 25% and 100% stored keys. With a
 development seed and a private one, that makes 144 workloads. Every stored key must be found, and
-false positives must stay under an allowance. For `m` absent queries and `b`-bit fingerprints:
+false positives must stay under an allowance. For `m` absent queries and `b`-bit fingerprints (the 25% stream uses `400/4e-8` in place of
+`1200/1e-6`):
 
 ```python
 from math import sqrt
@@ -440,7 +443,7 @@ all stored keys found: True; false positives 392 of 100,000, expected 390.6, all
 ```
 
 Five metrics are measured against the human reference (the authors' library) on the same machine,
-five times each: **memory** kept by the filter, **construction time**, **lookup time** per query, the
+in five paired repetitions (memory is the maximum over them, times are medians): **memory** kept by the filter, **construction time**, **lookup time** per query, the
 **false-positive rate**, and the **space overhead** `100 × (bits per key / log2(1/ε) − 1)`. The
 reference's memory follows from its layout. Its table has one byte per slot (two at 16 bits), plus a
 40-byte struct:
@@ -489,9 +492,11 @@ print(f"{score(opus):.1f}", [f"{100 * r / (c + r):.1f}" for c, r in opus])
 57.2 ['67.2', '54.3', '50.0']
 ```
 
-The task page gives 57.2. Twice as fast a build is worth 66.7 on that metric; a tie is worth 50.
-The memory term is nearly a tie: the table's size is fixed by the layout, so the only bytes to win
-are in the struct.
+Computed from means, this only approximates the per-workload average; the task page gives 57.2.
+Twice as fast a build is worth 66.7 on that metric; a tie is worth 50. The memory term is nearly a
+tie: with the reference's layout, only the struct's bytes can be won, which is what the passing
+runs did (616.1 KiB). Some runs shrank the table itself (Muse Spark 1.3: 611.0 KiB, 17.3% overhead),
+but none of them passed.
 
 # What the agents did
 
@@ -507,7 +512,8 @@ task 29th hardest of 48.
 | GPT-6 Astra | 14.6 | 3.81 | 616.1 | 1.964 | 19.3 | 52.8 | pass |
 | Kimi K3 | 15.8 | 3.84 | 616.2 | 1.964 | 19.2 | 50.4 | fail |
 
-Means over the 144 hidden workloads, as of October 26, 2026.
+Selected rows: the three passing runs and two instructive fails. Means over the 144 hidden
+workloads, as of October 26, 2026.
 
 **Claude Opus 5.5** had the best score. Its solution, from the task page, has five parts:
 
@@ -551,8 +557,10 @@ leaves a slot whose two keys have equal hashes, or after a few failures.
 
 ::: pitfall
 **A tie is not a win.** Kimi K3, Gemini 4 Argon · Pi and Step 5 Preview kept exactly the
-reference's memory, 616.2 KiB, and so won memory on 0 of 144 workloads. GPT-6.1 Sol had the fastest
-lookups on average (3.08 ns) but was slower than the reference on 1 of 144 workloads, and failed.
+reference's memory, 616.2 KiB, and so won memory on 0 of 144 workloads. (Kimi K3.1 Pro also shows 616.2 KiB
+after rounding, but won memory on all 144.) GPT-6.1 Sol had the fastest lookups on average (3.08 ns)
+but did not beat the reference on 1 of 144 workloads, and failed; GLM 5.3, GLM 5.3 Flash and Muse
+Wonder 1.0 also lost lookup on only one or two.
 :::
 
 # Summary and self-check
@@ -561,13 +569,14 @@ lookups on average (3.08 ns) but was slower than the reference on 1 of 144 workl
 **Three lessons from the Theory task.**
 
 1. *Theory sets the size.* The lower bound is `log2(1/ε)` bits per key; the layout decides how close
-   a filter gets (Bloom 44% above it, xor 23%, binary fuse 13%). Code cannot beat the layout's table
-   size, so the memory race is over a few struct bytes.
+   a filter gets (Bloom 44% above it, xor 23%, binary fuse 13%). The passing runs kept the reference's
+   layout, so their memory win was a few struct bytes; runs that shrank the table did not pass.
 2. *Peeling is simple and fragile.* It succeeds only above a threshold of slots per key, and never
    with a repeated key.
-3. *The engineering is in the cache.* The passing runs halved construction time by peeling segment by
-   segment while the data is still in cache. Every workload had to win, and one slow lookup stream
-   was enough to fail.
+3. *The engineering is in the cache.* The best run halved construction time by peeling segment by
+   segment while the data was still in cache; all three passing runs built faster than the
+   reference on every workload. Every workload had to win, and losing lookup on one was enough to
+   fail.
 :::
 
 ## Exercises
@@ -576,7 +585,7 @@ lookups on average (3.08 ns) but was slower than the reference on 1 of 144 workl
    8 bits per key? Compare with `0.69 × 8`.
 2. Peel the 8-key example by hand from the slot lists, and check the table against `contains`.
 3. In the threshold experiment, use 20,000 keys. Is the cliff sharper?
-4. Use `xor_where` with 1.17 slots per key for the 200,000 keys, and `fuse_where` with 1.10. What
-   happens, and why?
+4. Use `xor_where` with 1.17 slots per key for the 200,000 keys, and `fuse_where` with 1.10 (set
+   `capacity = round(1.10 * n)` in `fuse_layout`). What happens, and why?
 5. A run builds twice as fast, looks up 10% slower and ties on memory. What is its score on one
    workload, and does it pass?

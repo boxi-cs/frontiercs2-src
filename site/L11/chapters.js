@@ -43,7 +43,7 @@ const CHAPTERS = [
       { id: "instance", title: "A small instance", html: `
         <p>Our instance has <code>n = 12</code> unknowns, <code>m = 20</code> equations and modulus <code>q = 97</code>. The secret is ternary (−1, 0 or 1) with exactly two nonzero entries, and each error is −1, 0 or 1. A small generator, exact in JavaScript too, makes everything reproducible.</p>
         ${code("lwe")}
-        <p>The task checks a candidate exactly the way its public rules say: the right length, entries from the allowed alphabet, the right number of nonzeros, and a small residual <code>b − A s</code> in every row, after centering mod <code>q</code>. Any secret that passes counts, not only the one that was planted.</p>
+        <p>The task checks a candidate in the way its public rules say; ours is a simplified version: the right length, entries from the allowed alphabet, the right number of nonzeros, and a small residual <code>b − A s</code> in every row, after centering mod <code>q</code>. The real rules allow a range of nonzeros and can also bound the residual's sum, its sum of squares and its number of nonzeros. Any secret that passes counts, not only the one that was planted.</p>
         ${code("valid")}` },
       { id: "search", title: "The shortcut of a sparse secret", html: `
         <p>With two nonzero entries, there are only C(12, 2) × 2² = 264 candidates. We can try them all.</p>
@@ -53,15 +53,15 @@ const CHAPTERS = [
         ${code("space")}
         <p>Real attacks combine <b>lattice reduction</b>, which turns <code>b = A s + e</code> into a short-vector problem, with combinatorial guessing of the sparse part. The sizes <code>n = 256</code> and the weights here are our examples.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
-        <p>Here there is no solver to restore. The agent writes its own attacks and submits one secret per instance. There are 200 public instances in ten families of matrix and secret structure: dense or sparse matrices, with binary, ternary, small or unrestricted mod-<code>q</code> secrets. Each submitted secret is checked directly against the published rules. The score is the share of instances solved; a pass means solving all 200.</p>
+        <p>Here there is no solver to restore. The agent writes its own attacks and submits one secret per instance. There are 200 public instances in ten families of matrix and secret structure: dense or sparse matrices, some with small entries, and secrets that are binary, ternary, small, sparse or unrestricted mod <code>q</code>. Each submitted secret is checked directly against the published rules. The score is the share of instances solved; a pass means solving all 200.</p>
         <table><tr><th>Run</th><th>Instances solved</th><th>Final score</th><th></th></tr>
         <tr><td>GPT-6 Astra</td><td>84%</td><td>84.0</td><td>${fail}</td></tr>
         <tr><td>GPT-6.1 Terra</td><td>84%</td><td>84.0</td><td>${fail}</td></tr>
         <tr><td>GPT-6.1 Sol</td><td>80.5%</td><td>80.5</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>72% (144 of 200)</td><td>72.0</td><td>${fail}</td></tr></table>
-        <p class="meta">As of October 26, 2026. No model passed. <a href="${TASK}structured-lwe" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows, as of October 26, 2026. No model passed. <a href="${TASK}structured-lwe" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Claude Opus 5.5 solved all 20 in six families and the first six in each of the other four. With an FDI of 97.4, Structured LWE is the second-hardest task of the benchmark.</p>
-        ${callout("pitfall", "SOME FAMILIES ARE HARD BY DESIGN", "<p>LWE with a uniform secret and no extra structure is believed to be hard even for quantum computers. A family that is solvable at its size still needs the right attack, and an agent has five hours.</p>")}` },
+        ${callout("pitfall", "STRUCTURE MAKES A FAMILY ATTACKABLE, NOT EASY", "<p>Every family has some structure, and each needs its own attack in five hours. Claude Opus 5.5 solved all 80 instances of the four families with unrestricted mod-<code>q</code> secrets; the families it solved only in part have binary or ternary secrets with 2 to 8 nonzeros.</p>")}` },
     ],
     takeaways: ["b = As + e mod q; find a valid s.", "Sparsity shrinks the search.", "Pass = all 200; best run 84%."],
   },
@@ -76,11 +76,11 @@ const CHAPTERS = [
         <p><b>Homomorphic encryption</b> lets a server compute on encrypted data. <b>CKKS</b> computes on encrypted vectors of real or complex numbers, thousands of <em>slots</em> at once, and its results are approximate: every operation adds a little noise. How many correct bits survive a long computation? The paper <em>Accurate and Composable Noise Estimates for CKKS</em> (IACR CiC 2025) answers with an <b>estimator</b> that replays the computation on clear values, adding modeled noise at each step, instead of running it encrypted.</p>` },
       { id: "bits", title: "Precision in bits", html: `
         <p>A slot's <b>precision</b> is <code>−log2 |error|</code>: an error of 2<sup>−16</sup> means 16 correct bits after the point. The task asks for the mean and the spread (standard deviation) of the precision over all slots.</p>
-        <p>Our toy works like a fixed-point CKKS. A value <code>x</code> is stored as <code>x × Δ</code> plus a little Gaussian noise (standard deviation 3.2, a usual choice); squaring multiplies two noisy values, divides by <code>Δ</code> (<b>rescaling</b>) and adds rounding and key-switching noise.</p>
+        <p>Our toy works like a fixed-point CKKS. A value <code>x</code> is stored as <code>x × Δ</code> plus a little Gaussian noise (encryption noise of standard deviation 3.2, a usual choice); squaring multiplies two noisy values, divides by <code>Δ</code> (<b>rescaling</b>) and adds rounding and key-switching noise.</p>
         ${code("ckks")}
         ${predict("Squaring doubles the relative error. How many bits of precision should each squaring cost?", "<p>One: doubling an error removes one bit. The table shows 19.3 → 18.2 → 17.3 → 16.3 bits.</p>")}
         ${demo("ckks", "Demo 2 · Precision after squarings", "move the slider")}
-        <p>In the toy, "actual" and "estimator" run the same model with different noise samples; in the task, "actual" is a real encrypted Lattigo run, and the estimator must get within a few hundredths of a bit of it.</p>` },
+        <p>In the toy, "actual" and "estimator" run the same model with different noise samples; in the task, "actual" is a real encrypted Lattigo run. The reference estimator already gets within about 0.04 bits of it on average, and a pass must do at least as well on every setting.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task removes seven of the estimator's kernels: the noise of multiplication, summed products, relinearization, rescaling, division with rounding, and two key-switching methods. The agent writes them and may redesign how the estimator represents a noisy value.</p>
         <p>Each submission predicts nine encrypted computations, from one product to bootstrapping, under 29 settings. Real encrypted runs give the true mean and spread of precision. To pass, on every setting it must predict both as well as the human reference, within a band for run-to-run variation, and its estimator must run <b>faster</b>. The score depends only on accuracy:</p>
@@ -92,10 +92,10 @@ const CHAPTERS = [
         <tr><td>Claude Opus 5.5</td><td>0.0285</td><td>0.0322</td><td>102</td><td>97.1</td><td>${pass}</td></tr>
         <tr><td>Kimi K3.1 Pro</td><td>0.0296</td><td>0.0452</td><td>60.9</td><td>96.4</td><td>${pass}</td></tr>
         <tr><td>DeepSeek V4.1 Flash 1017</td><td>0.0538</td><td>0.034</td><td>413</td><td>95.8</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the hidden settings, as of October 26, 2026. Eleven of sixteen passed. <a href="${TASK}ckks-noise" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; means over the 29 settings of the final evaluation, as of October 26, 2026. Eleven of sixteen passed. <a href="${TASK}ckks-noise" target="_blank" rel="noopener">Full table ↗</a></p>
         <p><b>Claude Opus 5.5</b> kept each noisy value in ordinary double precision instead of arbitrary precision, split the noise into terms attached to 1, <code>s</code> and <code>s²</code> as in a real ciphertext, and skipped key-switching digits too small to matter. Its own idea was to carry <b>16 noise replicas</b>, each with its own sampled secret key, and keep the one whose statistics lie closest to the average of all 16, so that one unlucky sample does not skew the prediction.</p>
         ${code("replicas")}
-        <p>A single replica can miss by a quarter of a bit; the one nearest the average misses by 0.06.</p>` },
+        <p>In this draw of our toy, a single replica misses by 0.1 bit on average and by a quarter of a bit at worst; the one nearest the average misses by 0.06. Other draws give smaller numbers, but the order is the same.</p>` },
     ],
     takeaways: ["Precision = −log2 |error|.", "Each squaring costs about a bit.", "Accurate on every setting, and faster."],
   },
@@ -124,12 +124,12 @@ const CHAPTERS = [
   {
     slug: "4-checksums", nav: "Two checksums", title: "QuarterPIR: Two Checksums and the Results",
     subtitle: "A RAID-6 idea cuts 27% of every lookup",
-    abstract: "The server's and the client's group parities differ in exactly two known groups. A plain sum and a weighted sum then give both differences, so two checksums replace 32 parities. Privacy needs no new proof: the server sees only a public function of the authors' request.",
+    abstract: "The server's and the client's group parities differ in at most two known groups. A plain sum and a weighted sum then give both differences, so two checksums replace 32 parities. Privacy needs no new proof: the server sees only a public function of the authors' request.",
     tags: ["checksum", "RAID-6", "reduction", "privacy"],
     hero: "code:sums", heroCaption: "Two sums, two unknowns",
     sections: [
       { id: "sums", title: "The two checksums", html: `
-        <p>The task's goal is strictly fewer bytes per lookup, while also being faster and using no more client memory. <b>Muse Wonder 1.0</b> found the biggest cut, with a trick from RAID-6 disk arrays: two checksums can rebuild two lost values. The server's group parities and the client's own parities agree in every group but two, and the client knows which two. So the server sends only a plain sum and a weighted sum of its group parities, and the client compares them with the same sums of its own. Two equations give the two differences.</p>
+        <p>The task's goal is strictly fewer bytes on every lookup, and also strictly lower server time per lookup, client setup time and end-to-end lookup time, with no more client memory (an allowance of 32,768 bytes). The score weighs bytes half and the three times a sixth each; memory is not in it. <b>Muse Wonder 1.0</b> found the biggest cut of any passing run, with a trick from RAID-6 disk arrays: two checksums can rebuild two lost values. The server's group parities and the client's own parities agree in every group but two: the group of the wanted entry and the group of the entry inserted at the hint's last refresh. The client knows both. So the server sends only a plain sum and a weighted sum of its group parities, and the client compares them with the same sums of its own. Two equations give the two differences.</p>
         <p>The real scheme adds with XOR and weights in the finite field with 2<sup>128</sup> elements; here is the same step with ordinary numbers, as in the case study.</p>
         ${code("sums")}
         ${demo("sums", "Demo 4 · Solve two differences from two sums", "edit the server row")}
@@ -145,9 +145,9 @@ const CHAPTERS = [
         <tr><td>Muse Wonder 1.0</td><td>666</td><td>25.9</td><td>58.1</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>914</td><td>40.8</td><td>55.3</td><td>${pass}</td></tr>
         <tr><td>Kimi K3</td><td>418</td><td>291</td><td>54.7</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the two database sizes, from the task page, as of October 26, 2026 (the reference's 994 is the mean of 228 and 1,760). Eleven of sixteen passed. <a href="${TASK}quarterpir" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p>Gemini 4 Argon · Antigravity had the best final score, mostly from speed. Muse Wonder 1.0 cut the most bytes and was also much faster: at 67 million entries, server time per lookup fell from 856 µs to 100 µs and client setup from 122.2 s to 18.7 s. Claude Opus 5.5 instead dropped some keys from the request and stored the parities those keys would give, as client memory allowed.</p>
-        ${callout("pitfall", "EVERY METRIC COUNTS, MEMORY TOO", "<p>Kimi K3 sent only 736 bytes per lookup at 67 million entries, the fewest of any run, but kept 606.8 MB on the client against the reference's 85.3 MB, so it failed.</p>")}` },
+        <p class="meta">Selected rows; means over the two database sizes, from the task page, as of October 26, 2026 (the reference's 994 is the mean of 228 and 1,760). Eleven of sixteen passed. <a href="${TASK}quarterpir" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p>Gemini 4 Argon · Antigravity had the best final score, mostly from speed. Muse Wonder 1.0 cut the most bytes of the passing runs and was also much faster: at 67 million entries, server time per lookup fell from 856 µs to 100 µs and client setup from 122.2 s to 18.7 s. Claude Opus 5.5 instead dropped some keys from the request and stored the parities those keys would give, as client memory allowed.</p>
+        ${callout("pitfall", "EVERY METRIC COUNTS, MEMORY TOO", "<p>Kimi K3 sent only 736 bytes per lookup at 67 million entries, the fewest of any run, but kept 606.8 MB on the client against the reference's 85.3 MB (both at 67 million entries), so it failed.</p>")}` },
     ],
     takeaways: ["Two sums give two unknowns.", "1,760 → 1,280 bytes, 27% fewer.", "The server sees only f(R)."],
   },

@@ -127,6 +127,8 @@ tight to loose, and routes 32 queries one by one. It compares three rules at the
 rank by weight and drop the rest (Sparse VideoGen2), rank by weight and estimate the rest, and rank
 by error and estimate the rest (SVG-EAR). The error of a block is the case study's signal: the
 summed squared gap between the centroid estimate and each key, `Σ ‖e^{s̄} v̄ − e^{s_j} v_j‖²`.
+The paper divides it by the block's token pairs; our clusters are all the same size, so we skip
+that.
 
 ```python
 class Rng:
@@ -292,7 +294,9 @@ Means over the twelve hidden clips, as of October 26, 2026. Every run fails.
 **GPT-6 Astra** kept the design and changed how it runs. Every fourth denoising step it takes 32
 query tokens as probes, computes their exact attention, and rebuilds them the sparse way under caps
 of 12%, 25% and 50% of the keys. Each head runs at the lowest cap whose error stays under a bound,
-and a head that fails even at 50% runs dense attention until the next check. It also added a term
+and a head that fails even at 50% runs dense attention until the next check. Inside its cap it ranks
+blocks by estimated weight, the older Sparse VideoGen2 rule, until they hold 98% of the weight. So
+the best run did not rank by error: measuring the error set its budget. It also added a term
 the paper leaves out. A score is linear in the key, but `e^x` bends upward, so the average of
 `e^{s_j}` is never below `e^{s̄}`: the centroid guesses low. A second-order expansion gives the
 fix, `e^{s̄ + σ²/2}`, where `σ²` is the variance of the query's scores over the cluster.
@@ -318,7 +322,8 @@ The corrected estimate overshoots here, but it lands far closer than 5.44. Astra
 **Claude Opus 5.5** stayed closest to the paper. It rebuilt the error-aware choice of blocks, and
 sized the budget by error too: it takes key clusters until they cover 85% of the row's total error.
 Its k-means starts each step from the previous step's centroids, and FlashInfer's block-sparse
-kernel computes the chosen pairs and merges in the estimates through their log-sum-exp. It passed
+kernel computes the chosen pairs and merges in the estimates through their log-sum-exp (the log of a row's summed weights, which lets
+two partial softmaxes be combined). It passed
 all twelve speed checks and 32 of 48 checks in all; its misses were all on image quality.
 
 **GPT-6.1 Sol** ran exact attention. Its image quality was the best of any run, and it lost all
@@ -326,7 +331,7 @@ twelve speed checks. It also served as a yardstick: exact attention missed six i
 them the ones Astra missed.
 
 ::: pitfall
-**Fidelity decided the task.** Seven runs beat the reference's time on every clip, but no run
+**Fidelity decided the task.** Of the twelve runs in the case study, seven beat the reference's time on every clip, but no run
 passed all 36 image checks. Wan clip 3 stopped every run the case study examined.
 :::
 
@@ -427,7 +432,7 @@ continuum ttl   8 s: mean  24.1 s, p90  34.7 s, recomputed 18,200 tokens
 ```
 
 Ordering by conversation alone lowers the mean; the TTL then cuts recomputation by more than half.
-Here every tool pause is at most 7 s, so any TTL above that changes nothing. In the real system a
+Here any TTL of 5 s or more gives the same result. In the real system a
 held cache is memory other requests cannot use, which is why the TTL is chosen with care.
 
 ## What the agent writes, and how it is judged
@@ -495,8 +500,10 @@ requests by when their conversation began. When a turn finishes it holds the con
 for a TTL set from the last 256 pauses: 10 seconds until eight pauses are seen, then twice the
 90th-percentile pause plus one second, within 2 to 30 seconds. An expired hold frees nothing until
 memory runs short; then holds are released, expired ones first. Before a large hold is released, it
-is copied to host memory and copied back when the conversation returns. Its 99th percentile, 4,990
-s, shows how one slow conversation can sink a tail check.
+is copied to host memory and copied back when the conversation returns. Its 99th percentile was
+4,990 s against the reference's 183 (a mean over the hidden groups); the page does not say why. With
+48 SWE conversations, p99 is the slowest one, so a single stuck conversation is enough to fail the
+check.
 
 # FlashLib: k-NN and k-means
 
@@ -615,9 +622,10 @@ The answer is always exact; how much work it saves depends on k and the group si
 
 Each task leaves a plain, slow version as the starter, and the agent writes a fast GPU version in
 Python and Triton on one H100. The score is `L(S)` from the Continuum section, with `S` the
-geometric mean, over the scored workloads, of the median paired speedup over the naive starter. A
-pass compares with the human reference on every workload, including hidden ones: strictly faster,
-and quality no worse.
+geometric mean, over the scored workloads, of the median paired speedup over the naive version
+(for k-NN, the frozen original cdist/topk; for k-means, the ratio of median latencies). A pass
+compares with the human reference on every workload, including hidden ones: strictly faster, and
+quality no worse (k-means has quality bands instead, given below).
 
 The score formula can be inverted. From the leaderboard's rounded scores:
 
@@ -645,7 +653,9 @@ The log scale squeezes large speedups: 75.6 against 80.5 on IVF-PQ is a factor o
 scores are rounded to one decimal, so the high ones are rough.
 
 For **k-NN**, the workloads are SIFT and GIST descriptors, up to 1,000,000 database rows and k up to
-256 in hidden shapes. Every timed call must reach ball-recall 0.88. To pass, each workload must be
+256 in hidden shapes. *Ball-recall* is the share of returned rows no farther than the plain
+search's k-th distance (plus 10⁻⁶); *exact recall* is the same test against the true k-th distance
+in fp64. Every timed call must reach ball-recall 0.88. To pass, each workload must be
 faster than the reference, with worst ball-recall and worst exact recall at least the reference's,
 and every reported distance within a relative 10⁻⁶ of a direct recomputation.
 
@@ -656,8 +666,8 @@ and every reported distance within a relative 10⁻⁶ of a direct recomputation
 | Gemini 4 Argon · Pi | 1.84 | 0.948 | 0.9999 | 47.6 | fail |
 | Gemini 4 Argon · Antigravity | 1.95 | 0.948 | 1.000 | 45.4 | pass |
 
-2 of 16 passed, as of October 26, 2026. Beyond the bound, Opus recomputed the surviving candidates
-in double precision so the distances match exactly, replayed a recorded launch plan to skip Python
+Selected runs; 2 of 16 passed, as of October 26, 2026. Beyond the bound, Claude Opus 5.5 recomputed the surviving candidates
+in double precision so every distance matches a direct recomputation, replayed a recorded launch plan to skip Python
 dispatch, and, as its own idea, noticed that SIFT values are whole numbers: shifted by −128 into
 8-bit integers, the dot products are exact in 32-bit integer arithmetic.
 
@@ -744,7 +754,7 @@ wrong tile for 0 of 600 points; largest error 7.8e-07
 The pass rule allows the clustering cost (inertia) to grow by at most 5% and the share of points
 not at an exact nearest center by at most 0.002, and asks for a faster time on every one of six
 shapes. 8 of 16 models passed, as many as on IVF-PQ and more than on the other four MLSys
-tasks. Opus had the best score, 53.8 against the reference's 43.3, at 0.944 ms per Lloyd
+tasks. Claude Opus 5.5 had the best score, 53.8 against the reference's 43.3, at 0.944 ms per Lloyd
 iteration against 1.96.
 
 # FlashLib: DBSCAN and IVF-PQ
@@ -936,7 +946,7 @@ nprobe 16: scans 2000.0 codes, iso-recall 1.00, nn-recall@10 1.00
 
 **Iso-recall** compares with the same index searched over every list; **nearest-neighbor recall**
 asks whether the true nearest vector is among the k returned. The index is fixed; the public workloads use
-8,192 lists, 16 codes per vector and k = 100 on SIFT, and hidden ones reach k = 1,024. Every timed call needs iso-recall 0.99,
+8,192 lists, m = 16 parts per vector (16 one-byte codes) and k = 100 on SIFT, and hidden ones reach k = 1,024. Every timed call needs iso-recall 0.99,
 and to pass each workload must be faster than the reference with both recalls no lower. 8 of 16
 passed.
 
@@ -947,15 +957,16 @@ passed.
 | Gemini 4 Argon · Pi | 1 | 0.967 | 3.41 | 79.8 | pass |
 | DeepSeek V4.1 Flash | 1 | 0.967 | 19.4 | 78.7 | fail |
 
-As of October 26, 2026. **Claude Opus 5.5** grouped the query–list pairs by list, so each list's
+Selected runs, as of October 26, 2026. **Claude Opus 5.5** grouped the query–list pairs by list, so each list's
 codes are decoded once and compared with every query that probes it as one matrix product. Every
 fast pass carries an error bound, and anything near a boundary is recomputed with the plain
 search's own arithmetic, so its output matches the slow search exactly.
 
 ::: pattern
-**Exact, but fast.** The FlashLib passes share one move: a fast approximate pass with a proven
-error bound, then exact arithmetic only near the boundary. The answer is the plain version's, bit
-for bit, and the bound decides how little must be recomputed.
+**Exact, but fast.** Claude Opus 5.5's k-NN, DBSCAN and IVF-PQ passes share one move: a fast
+approximate pass with a proven error bound, then exact arithmetic only near the boundary. The
+bound decides how little must be recomputed. (Its k-means pass needs no such step: a matrix product
+and an exact running minimum. The task pages do not describe the other passing runs.)
 :::
 
 # Summary and self-check
@@ -964,10 +975,12 @@ for bit, and the bound decides how little must be recomputed.
 **Three lessons from the MLSys tasks.**
 
 1. *Estimate what you skip, and rank by error.* SVG-EAR keeps an estimate of every skipped block and
-   spends its budget where the estimate is worst.
+   spends its budget where the estimate is worst. (The best run, Astra, ranked by weight but used
+   measured error to size its budget.)
 2. *Every workload, every metric.* Astra beat the SVG-EAR reference on every mean and missed five
-   checks; Opus's Continuum run had one 99th percentile of 4,990 s.
-3. *Bound, then be exact.* The FlashLib passes compute approximately, prove how far off they can be,
+   checks; Claude Opus 5.5's Continuum run had a 99th percentile of 4,990 s.
+3. *Bound, then be exact.* Claude Opus 5.5's k-NN, DBSCAN and IVF-PQ passes compute approximately,
+   prove how far off they can be,
    and redo only what lies near the boundary.
 :::
 

@@ -41,10 +41,10 @@ const CHAPTERS = [
     hero: "code:rebuild", heroCaption: "A join tree, rebuilt from any root",
     sections: [
       { id: "idea", title: "Rows that cannot match", html: `
-        <p>A database joins tables two at a time. A plan built this way can produce intermediate results far larger than the final answer. For acyclic joins, the <b>Yannakakis algorithm</b> avoids this. It first drops every row that cannot match, using <b>semijoins</b> (keep the rows of one table that have a partner in another), then joins what is left. The paper (PVLDB 2025) engineers this for a column store, so that it never runs much slower than the binary plan and often runs much faster.</p>
+        <p>A database joins tables two at a time. A plan built this way can produce intermediate results far larger than the final answer. For acyclic joins, the <b>Yannakakis algorithm</b> avoids this. It first runs a bottom-up pass of <b>semijoins</b> (keep the rows of one table that have a partner in another), which drops every row with no partner below it in the join tree, then joins top-down. The paper (PVLDB 2025) engineers this for a column store, so that it never runs much slower than the binary plan and often runs much faster.</p>
         <p>Our tables follow the task page's example from Stack Overflow data. <code>u</code> holds users (after a selective filter, four are left), <code>p</code> posts with their owner, and <code>c</code> comments with their post. Attribute 0 is a post id and attribute 1 a user id. The optimizer's plan joins comments with posts first, then with users.</p>
         ${code("semijoin")}
-        <p>The binary plan builds 600 rows to keep 60. After the semijoins, no intermediate result is larger than the answer.</p>` },
+        <p>The binary plan builds 600 rows to keep 60. After the semijoins, no intermediate result is larger than the answer. One bottom-up pass does not remove every row that cannot match: 1 of the 15 kept posts has no comment. It does guarantee that every row of the root, here the comments, extends to an answer, which keeps the joins small; a second, top-down pass of semijoins would remove the rest.</p>` },
       { id: "shape", title: "Which trees convert", html: `
         <p>The system turns a binary join tree into a nested-semijoin plan, but only trees of one shape convert. For every join, its keys must appear in the <b>leftmost table</b> of both sides. Our plan adds votes <code>v</code> to the task page's example. Its middle join is on key 0, but the leftmost table of its left side is <code>u</code>, which holds only key 1.</p>
         ${code("leaf")}` },
@@ -78,7 +78,7 @@ const CHAPTERS = [
         <tr><td>Gemini 4 Argon · Antigravity</td><td>1</td><td>213</td><td>12.1</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>1</td><td>220</td><td>11.8</td><td>${fail}</td></tr></table>
         ${asOf("yannakakis", " Means over the hidden queries; the reference's row is a median of its measurements in every run.")}
-        <p>A score of 12.5 is what a 1.4x speedup on every query would give. Kimi K3.1 Pro has the best score but not the lowest latency: the score averages per-query gains over the binary plan, so a few large gains can lift it. The pass needs something harder: 39 strict wins, query by query, against plans that already run fast.</p>
+        <p>A score of 12.5 is what a speedup of about 1.4x on every query would give. Kimi K3.1 Pro has the best score but not the lowest latency: the score averages per-query gains over the binary plan, so a few large gains can lift it. The pass needs something harder: 39 strict wins, query by query, against plans that already run fast.</p>
         <p>Besides the join-tree rewrite, <b>Claude Opus 5.5</b> stored, for the Stack Overflow and IMDB schemas, each table's size and the entity each join column refers to. From these it estimated how much each semijoin shrinks its parent. A hill climb then swapped tree edges for others on the same keys, tried every root and ordered children by selectivity, within 6,000 candidate trees. A check confirmed every new plan keeps each table and key and has no cross product; any failure fell back to a plain conversion.</p>
         ${callout("pitfall", "STRICT PER-QUERY TIMING", "<p>With 39 queries and no margin, a single query that runs a few milliseconds slower than the reference fails the run. A rewrite that helps on average is not enough.</p>")}` },
     ],
@@ -157,8 +157,8 @@ const CHAPTERS = [
         <tr><td>Kimi K3</td><td>0.988</td><td>1.65</td><td>0.897</td><td>2,990</td><td>85.5</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>0.995</td><td>4.38</td><td>0.956</td><td>6,070</td><td>81.8</td><td>${pass}</td></tr>
         <tr><td>GPT-6.1 Sol</td><td>0.995</td><td>4.44</td><td>0.956</td><td>6,160</td><td>81.7</td><td>${pass}</td></tr></table>
-        ${asOf("approximate-mips-query-stopping", " The top two scores came from stopping much earlier: four times faster, at a cost in recall the score allows and the pass rule does not.")}
-        <p><b>Claude Opus 5.5</b> kept the fixed budget as an upper limit and added the paper's test. From the k-th score, <code>c</code> and the partition's largest length it found the angle; if no angle qualified, the partition stopped at once. It read the lookup table's columns lazily and remembered, per angle, the first column that passes. Its own idea was the settled-partition stop: once k results reach the largest inner product a partition allows, neither it nor any partition of shorter vectors can enter the answer. It checked this only after 1, 2, 4, 8 and later powers of two probes, to keep it cheap.</p>` },
+        ${asOf("approximate-mips-query-stopping", " The top two scores came from stopping much earlier: three to five times faster, at a cost in recall the score allows and the pass rule does not.")}
+        <p><b>Claude Opus 5.5</b> kept the fixed budget as an upper limit and added a probability test. From the k-th score, <code>c</code> and the partition's largest length it found the angle; if no angle qualified, the partition stopped at once. From the authors' lookup table it took the chance that one table had already probed a vector at that angle; with <code>L</code> tables, one minus the miss chance to the power <code>L</code> is the chance that at least one had. It stopped once that reached 90%. This is not the <code>α₂</code> rule from the previous chapter, which the Query Core task fixes: <code>α₂</code> asks that no table still hold the vector unseen. It read the lookup table's columns lazily and remembered, per angle, the first column that passes. Its own idea was the settled-partition stop: once k results reach the largest inner product a partition allows, neither it nor any partition of shorter vectors can enter the answer. It checked this only after 1, 2, 4, 8 and later powers of two probes, to keep it cheap.</p>` },
       { id: "core", title: "FARGO Query Core", html: `
         <p>This task removes the whole query core: the frontier that streams <code>(table, key, score)</code> buckets across all tables, each exactly once, with the score equal to the sum of squared projections on the differing bits, and the stop rule, which the statement fixes to the paper's <code>α₂ &lt; 0.1</code>. Searches run on Audio and MNIST (60,000 × 784), at <code>c</code> of 0.6, 0.8, 0.9 and <code>k</code> of 1, 10, 50, 100. To pass, every setting must equal or beat the human reference on recall and answer quality, verify no more candidates, and answer strictly faster.</p>
         <p>12 of 16 models passed; 15 of 16 scored above the human reference (50.9).</p>
@@ -168,7 +168,7 @@ const CHAPTERS = [
         <tr><td>GPT-6 Astra</td><td>7,060</td><td>0.983</td><td>6.56</td><td>0.76</td><td>52.5</td><td>${pass}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>7,060</td><td>0.983</td><td>6.26</td><td>0.76</td><td>52.5</td><td>${pass}</td></tr>
         <tr><td>Kimi K3</td><td>7,060</td><td>0.983</td><td>7.5</td><td>0.76</td><td>52.1</td><td>${fail}</td></tr></table>
-        ${asOf("fargo-paper-aligned-query-core", " Every scored run verified the same 7,060 candidates with the same recall: with the rule fixed, the task became a race on speed.")}
+        ${asOf("fargo-paper-aligned-query-core", " Every scored run reached the same rounded means (7,060 candidates, recall 0.76): with the rule fixed, the task became a race on speed.")}
         <p><b>Claude Opus 5.5</b> produced the early buckets from a small heap over all tables, growing sets of flipped bits by shift and expand moves over each table's sorted costs, so each bucket appears once, in order. For deep probing it switched to batches: each table's costs split into a low and a high half with precomputed sorted subset sums, and every bucket below the next threshold was emitted at once and sorted. For fixed inputs the stop rule is a cutoff distance, cached until the k-th result changes.</p>
         ${callout("pattern", "SAME PAPER, TWO TASKS", "<p>When the agent chose the rule, the best scores stopped early and failed. When the rule was fixed, nearly everyone passed by making the same search faster.</p>")}` },
     ],
@@ -212,7 +212,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Sol</td><td>1</td><td>11.8</td><td>91.1</td><td>${pass}</td></tr>
         <tr><td>GPT-6.1 Terra</td><td>1</td><td>11.9</td><td>88.2</td><td>${fail}</td></tr></table>
         ${asOf("scalegpm")}
-        <p><b>Claude Opus 5.5</b> predicted each engine's time with its own formula. Sampling grows with the sample count, the average degree and the graph size; sparsification with the vertices and edges, divided by powers of the number of colors, with triangle terms for 4-cliques. It fitted the coefficients to its own timings of the unmodified engines on generated small-world graphs, one set per pattern and core count, and picked the smaller prediction. Its own idea: a graph with more triangles than a random one of the same degree has more local neighbor lists, which merge faster, so it added a locality term inferred from the triangle count.</p>` },
+        <p><b>Claude Opus 5.5</b> predicted each engine's time with its own formula. Sampling grows with the sample count, the average degree and the graph size; sparsification with the vertices and edges, divided by powers of the number of colors, with triangle terms for 4-cliques. It fitted the coefficients to its own timings of the unmodified engines on generated small-world graphs, one set per pattern and core count, and picked the smaller prediction. Its own idea: small-world graphs with fewer random shortcuts have more triangles and more local neighbor lists, which merge faster. It inferred the share of rewired edges from the triangle count, against a regular lattice of the same degree, and added a locality term to both formulas.</p>` },
     ],
     takeaways: ["Local counts from shared degree and neighbor tables.", "Homomorphisms are easy; inversion recovers copies.", "Regret weighs a wrong pick by its cost."],
   },
@@ -224,7 +224,7 @@ const CHAPTERS = [
     hero: "code:paged", heroCaption: "Pages of four, shared until written",
     sections: [
       { id: "stack", title: "Checkpoints on the stack", html: `
-        <p><b>Spectrum</b> (PVLDB 2024) runs Ethereum smart-contract transactions in parallel but commits them in the order consensus fixed. When two conflict, it does not restart the later one; it rolls it back to a <b>checkpoint</b> taken partway through. A checkpoint saves the code position and the operand stack. Copying a deep stack at every checkpoint is slow and uses memory. Our second stack keeps items in pages of four: a checkpoint shares the page table, and a page is copied only on its first write after a checkpoint.</p>
+        <p><b>Spectrum</b> (PVLDB 2024) runs Ethereum smart-contract transactions in parallel but commits them in the order consensus fixed. When two conflict, it does not restart the later one; it rolls it back to a <b>checkpoint</b> taken partway through. A checkpoint saves the code position and the operand stack. Copying a deep stack at every checkpoint is slow and uses memory. Our second stack keeps items in pages of four: a checkpoint copies only the page table, a list of pointers that our model does not count (Opus delayed even that copy), and a page is copied only on its first write after a checkpoint.</p>
         ${code("copystack")}
         ${code("paged")}
         <p>The task's correctness trace, in small: push 200 items, keep 16 checkpoints, with 24 writes after each, then restore every one and compare with what it saw.</p>
@@ -237,7 +237,7 @@ const CHAPTERS = [
         ${code("points")}
         <p>To pass, it must beat the human reference on all four: throughput, creation time, restore time and memory per checkpoint.</p>
         <p>2 of 16 models passed; 9 of 16 scored above the human reference (61.4).</p>
-        <table><tr><th>Run</th><th>Create (ns)</th><th>Restore (ns)</th><th>Transactions/s</th><th>Memory per checkpoint</th><th>Final score</th><th></th></tr>
+        <table><tr><th>Run</th><th>Create (ns)</th><th>Restore (ns)</th><th>Transactions/s</th><th>Memory per checkpoint (bytes)</th><th>Final score</th><th></th></tr>
         <tr><td>Human reference</td><td>231</td><td>65</td><td>42,500</td><td>13,400</td><td>61.4</td><td></td></tr>
         <tr><td>Gemini 4 Argon · Antigravity</td><td>37</td><td>30</td><td>47,500</td><td>8,500</td><td>100.0</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>43</td><td>25</td><td>48,100</td><td>8,560</td><td>88.5</td><td>${pass}</td></tr>
@@ -253,9 +253,9 @@ const CHAPTERS = [
         ${demo("seer", "Demo 7 · Three branch predictors", "pick a predictor")}
         <p>Waiting for a second block halves the wrong guesses, at the price of more unsure answers.</p>` },
       { id: "seer-judged", title: "Seer: how it is judged", html: `
-        <p>The predictor is a Go file, <code>core/vm/predictor.go</code>, with only <code>math</code>, <code>sort</code> and <code>sync</code> packages allowed. The judge replays 600 consecutive blocks of Ethereum mainnet from height 14,650,000, with the authors' snapshot. Transactions using at least 100,000 gas are complex, the rest normal. Each block and category reports a transaction-path ratio <code>T</code> and a branch accuracy <code>B</code>. The score is <code>Q = 100 (0.8 B + 0.2 T)</code>, normalized against the always-taken predictor and squared. To pass, in each category and each of the three 200-block periods, the summed branch accuracy must rise by at least one printed hundredth over the human reference, and the summed path ratio must not fall.</p>
+        <p>The predictor is a Go file, <code>core/vm/predictor.go</code>, with only the <code>math</code>, <code>math/bits</code>, <code>sort</code>, <code>sync</code> and <code>sync/atomic</code> packages allowed. The judge replays 600 consecutive blocks of Ethereum mainnet from height 14,650,000, with the authors' snapshot. Transactions using at least 100,000 gas are complex, the rest normal. Each block and category reports a transaction path accuracy (a ratio) <code>T</code> and a branch accuracy <code>B</code>. The score is <code>Q = 100 (0.8 B + 0.2 T)</code>, normalized against the always-taken predictor and squared. To pass, in each category and each of the three 200-block periods, the summed branch accuracy must rise by at least one printed hundredth over the human reference, and the summed path ratio must not fall.</p>
         <p>4 of 16 models passed; 14 of 16 scored above the human reference (80.4).</p>
-        <table><tr><th>Run</th><th>Branch accuracy</th><th>Path accuracy</th><th>Final score</th><th></th></tr>
+        <table><tr><th>Run</th><th>Branch accuracy</th><th>Transaction path accuracy</th><th>Final score</th><th></th></tr>
         <tr><td>Human reference</td><td>0.954</td><td>0.873</td><td>80.4</td><td></td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>0.96</td><td>0.893</td><td>81.5</td><td>${pass}</td></tr>
         <tr><td>Gemini 4 Argon · Antigravity</td><td>0.96</td><td>0.893</td><td>81.4</td><td>${pass}</td></tr>
@@ -347,18 +347,18 @@ const CHAPTERS = [
 
 const QUIZ = [
   { q: "What does the first phase of the Yannakakis algorithm do?",
-    opts: ["Sorts every table", "Drops, with semijoins, every row that cannot be part of the answer", "Builds all binary joins", "Estimates the result size"],
+    opts: ["Sorts every table", "Drops, with semijoins, rows that have no partner further down the join tree", "Builds all binary joins", "Estimates the result size"],
     a: 1, why: "Semijoins keep only rows with a partner. After them, no intermediate join result is larger than the answer: 600 rows shrank to 60 in our model." },
   { q: "A join on key 0 has, as the leftmost table of its left side, a users table that holds only key 1. What happens?",
-    opts: ["Nothing; the plan lowers", "The plan does not lower: the keys must be in the leftmost table of both sides", "The engine adds a cross product", "The query returns no rows"],
-    a: 1, why: "That is the task's lowerability rule. Rebuilding the plan from a join tree, with each child joined onto its parent, always satisfies it." },
+    opts: ["The plan does not lower: the keys must be in the leftmost table of both sides", "Nothing; the plan lowers", "The engine adds a cross product", "The query returns no rows"],
+    a: 0, why: "That is the task's lowerability rule. Rebuilding the plan from a join tree, with each child joined onto its parent, always satisfies it." },
   { q: "In JoinBoost, a leaf holds h rows with residuals summing to g. With learning rate lr, by how much does the sum of squared residuals drop?",
-    opts: ["lr · g", "(2 lr − lr²) g² / h", "g² / h always", "It may rise"],
-    a: 1, why: "Each row moves by lr · g / h. Expanding the squares gives a drop of (2 lr − lr²) g² / h; the judge checks it after every update." },
+    opts: ["lr · g", "g² / h always", "(2 lr − lr²) g² / h", "It may rise"],
+    a: 2, why: "Each row moves by lr · g / h. Expanding the squares gives a drop of (2 lr − lr²) g² / h; the judge checks it after every update." },
   { q: "On FARGO Query Stopping, GLM 5.3 had the best score, 86.7, and failed. Why?",
-    opts: ["It was slower than the reference", "It stopped early: four times faster, but its recall fell below the reference's", "It crashed on hidden queries", "It verified more candidates"],
-    a: 1, why: "The score rewards speed and fewer candidates and tolerates some lost recall; the pass rule does not. Its recall@50 was 0.921 against 0.963." },
+    opts: ["It was slower than the reference", "It crashed on hidden queries", "It verified more candidates", "It stopped early: more than four times faster, but its recall fell below the reference's"],
+    a: 3, why: "The score rewards speed and fewer candidates and tolerates some lost recall; the pass rule does not. Its recall@50 was 0.921 against 0.963." },
   { q: "Two ScaleGPM selectors each pick the faster engine on 10 of 12 settings. Why can their scores differ widely?",
-    opts: ["Ties are broken at random", "The score uses regret: a wrong pick costs little where the engines are close and much where they are not", "Only 4-cliques count", "The score rounds accuracy"],
-    a: 1, why: "In our model, wrong on two close calls scores 91.5 and wrong on two wide gaps 18.2, with the same accuracy." },
+    opts: ["The score uses regret: a wrong pick costs little where the engines are close and much where they are not", "Ties are broken at random", "Only 4-cliques count", "The score rounds accuracy"],
+    a: 0, why: "In our model, wrong on two close calls scores 91.5 and wrong on two wide gaps 18.2, with the same accuracy." },
 ];

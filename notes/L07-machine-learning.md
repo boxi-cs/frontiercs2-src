@@ -22,7 +22,7 @@ has been run, and every output shown is the real output.
 **Sources.** Task pages and results: <https://frontier-cs.org/> (as of October 26, 2026). The task
 statements are the public ones an agent reads. The "what the agents did" parts follow each task
 page's "Solution" section, which shows one run per task; for KV Compaction we read the run's patch
-on the task page. There is no case study for these tasks yet. Nothing here comes from the hidden
+on the task page, including the settings it was submitted with. There is no case study for these tasks yet. Nothing here comes from the hidden
 workloads or the human reference patches.
 
 **Numbers.** Pass counts and scores are from the 16-model leaderboard. Where we recompute a final
@@ -172,7 +172,7 @@ kept      random  top attention
 24 of 48  0.9221         0.0376
 ```
 
-Choosing keys by attention halves the gap or better at every size. But the kept keys draw less
+Choosing keys by attention about halves the gap, or better, at every size. But the kept keys draw less
 weight than the 48 keys did, so the template keys get too large a share. And each kept value stands
 for itself only, not for the keys dropped near it.
 
@@ -180,7 +180,7 @@ The second and third steps fix both. The **bias** `β_j = log w_j` scales key `j
 weights `w_j ≥ 0` are fitted so that, for every sample query, the kept keys' weights add up to the
 whole article's (nonnegative least squares, here by multiplicative updates). Then the **values** are
 fitted by least squares: with the biased weights, the kept keys' output should match the whole
-article's output, for every sample query. A small ridge pulls them toward the original values.
+article's output, for every sample query. A small ridge (our choice) pulls them toward the original values.
 
 ```python
 def fit_bias(article, kept, queries, steps=200):
@@ -262,7 +262,7 @@ fixed, and the method never sees the questions.
 
 # KV Compaction: the hardest task
 
-KV Compaction has an FDI of 103.0, the highest of the 48 tasks. No model passed. The best run was
+KV Compaction has an FDI (FrontierCS's difficulty index; see L00) of 103.0, the highest of the 48 tasks. No model passed. The best run was
 more than a hundred times faster than the reference and still failed.
 
 ## How it is judged
@@ -314,27 +314,34 @@ final score is the benchmark's own 0–100 measure, on which the human reference
 | DeepSeek V4.1 Flash 1017 | 272 | 637 | 12 | 62.0 | fail |
 | Gemini 4 Argon · Pi | 92.9 | 738 | 12.1 | 61.9 | fail |
 
-As of October 26, 2026. Four of 16 models scored above the human reference; none passed. Every run
+As of October 26, 2026. Selected rows; the full table is on the task page. Four of 16 models scored
+above the human reference; none passed. Every run
 with results beat the reference on time and size on all 24 articles. Accuracy decided everything:
 **Claude Opus 5.5** answered more questions than the reference on average, 13.2 against 12.9, and
 still fell short on 2 of the 24 articles. Muse Wonder 1.0 kept a third of the bytes and fell short
 on 8.
 
-Claude Opus 5.5's patch (the task page shows it in full) does three things beyond the toy:
+Claude Opus 5.5's run (the task page shows its patch in full) was pure key selection:
 
-- **Self-study queries.** It uses the vLLM engine to generate short answers to a few seed prompts
-  about the article, runs them through the model with the full cache, and records their queries.
-  These, with queries from the article itself, choose the keys and fit the biases and values.
-- **A budget per layer.** It ranks keys within each head, then gives each layer between half and
-  twice the uniform share, by where the scores are highest.
-- **Bytes paid for.** It counts the bias's bytes against the token budget, and kept about three
-  times the target's article tokens (its `budget_scale` is 2.95) while staying below the reference's
-  cache size. Custom GPU kernels compute the attention scores without forming the full matrix.
+- **Scores from the article's own queries.** It records the queries of the article's tokens during
+  the prefill, rotates them as if they sat just after the article, and scores each article key by
+  its mean attention from them. Custom GPU kernels compute these scores without forming the full
+  matrix.
+- **Spread over the article.** It divides each score by its local average, so the kept tokens are
+  not all bunched in one part of the story.
+- **A budget per layer.** It gives each layer between half and twice the uniform share, by where
+  the scores are highest, and keeps about three times the target's article tokens (its
+  `budget_scale` is 2.95) while staying below the reference's cache size.
+
+It keeps the chosen keys with their original values and no bias. The patch also contains
+self-study queries (generated with the vLLM engine) and the bias and value fitting of our toy, but
+its final settings turn them off (`use_ss=False`, and the fitting runs only with self-study
+queries). The best run on the hardest task chose keys well and spent the bytes on more of them.
 
 ::: pitfall
 **A mean is not every article.** Opus's mean accuracy beat the reference, but a pass is decided
-article by article. Two stories where the compacted cache missed one question too many sank a run
-that was 108 times faster.
+article by article. Two stories where the compacted cache fell more than one question below the
+reference (in the worst of three repetitions) sank a run that was 108 times faster.
 :::
 
 # Reinforcement learning: building the batches
@@ -429,8 +436,8 @@ print(f"reference {ragen_score(0.0, -0.325):.2f}, Claude Opus 5.5 {ragen_score(0
 reference 11.69, Claude Opus 5.5 18.46
 ```
 
-These match the leaderboard's 11.7 and 18.5. To pass, every graded group must beat the reference on
-**both** success rate and reward, strictly.
+These match the leaderboard's 11.7 and 18.5. Each of the 3 graded workloads is one such run of six
+groups. To pass, every group must beat the reference on **both** success rate and reward, strictly.
 
 **What the agents did.** No model passed; the best final score is 18.5, shared by Claude Opus 5.5
 and GPT-6.1 Sol, against the reference's 11.7. Both solved some games (success 0.0833) and beat the
@@ -571,7 +578,8 @@ higher than the reference, unless both are already perfect.
 | Kimi K3 | 0.751 | 5 of 8 | 75.1 | fail |
 | Claude Opus 5.5 | 0.559 | 2 of 8 | 55.9 | fail |
 
-As of October 26, 2026. No model passed; 10 of 16 scored above the human reference. The task
+As of October 26, 2026. Selected rows; the full table is on the task page. No model passed; 10 of
+16 scored above the human reference. The task
 page describes Claude Opus 5.5's run (55.9, 2 of 8): one guided model call per step, a reverse-SDE
 Gaussian step with the log-probability in double precision, a two-step DPM-Solver++ for the
 noiseless evaluation images, and, its own idea, the capped early noise of our second toy. In its
@@ -775,7 +783,8 @@ and whitening (InfoNCE too, though the scored path does not call it). No loss ma
 calls. The encoder, optimizer, data and metrics stay fixed.
 
 **How it is judged.** Three seeded runs of 1,001 updates on fresh batches of 256. The score is the
-mean of `Q` (our toy's formula, up to 90) plus up to 10 points for a shorter total time. To pass,
+mean of `Q` (our toy's formula, up to 90) plus a time bonus, `5 · T_ref / T`, capped at 10 (5
+points at equal speed). To pass,
 each run must beat the reference on six measures: R² in both directions, orthogonality error,
 covariance deviation `ε = ‖Cov h − I‖`, the alignment gap `δ`, and the error after the best
 rotation.
@@ -833,7 +842,8 @@ shape (1, 4, 4, 32, 32). The trained NanoWM-B/2 model and the image encoder and 
 **How it is judged.** Each clip is a point moving through a simulated maze; the three future frames
 are compared with the recorded ones by PSNR, SSIM and LPIPS. Each measure is mapped to [0, 1]
 (PSNR from 20 to 50 dB, SSIM from 0.8 to 1, LPIPS from 0.25 to 0), averaged and scaled to 100.
-To pass, on all six graded clips PSNR and SSIM must be strictly higher and LPIPS strictly lower than
+The score averages only the suite's two original clips, while the pass rule checks all six. To
+pass, on all six graded clips PSNR and SSIM must be strictly higher and LPIPS strictly lower than
 the reference's.
 
 ## Sixteen samples, averaged
@@ -879,9 +889,10 @@ one sample, which PSNR rewards; a perceptual measure like LPIPS may not.
 | GPT-6.1 Sol | 0.0192 | 38.1 | 0.9850 | 81.1 | fail |
 | Kimi K3 | 0.0176 | 38.2 | 0.9853 | 80.9 | fail |
 
-As of October 26, 2026. 13 of 16 models scored above the reference, and only **Claude Opus 5.5**
+As of October 26, 2026. Selected rows; the full table is on the task page. 13 of 16 models scored
+above the reference, and only **Claude Opus 5.5**
 passed. Most runs beat the reference's PSNR on all six clips; LPIPS decided the passes. GPT-6
-Astra and Kimi K3, next in line, each lost LPIPS on 1 of 6 clips.
+Astra, Kimi K3 and GLM 5.3 each lost only LPIPS, on 1 of 6 clips.
 
 Opus wrote one rule for all schedules (our first toy), a per-frame DDIM update that estimates every
 clean frame from the model's output, and a lightly noised history. Its own idea is our second toy:
@@ -896,13 +907,13 @@ removes what samples disagree on, and a short final denoise restores detail.
 
 # Short runs: DeTok and DyT
 
-Two tasks train a model briefly and score it. A short run changes which version of the paper's idea
-wins.
+Two tasks train a model briefly and score it. In both, a short run left little room to win on
+quality, and speed decided most scores.
 
-## DeTok: corrupt, but lightly
+## DeTok: how much to corrupt
 
 An image tokenizer turns a photo into latent tokens and decodes them back. **DeTok** (*Latent
-Denoising Makes Good Tokenizers*, ICLR 2026) trains the tokenizer as a denoiser: it hides most image
+Denoising Makes Good Tokenizers*, ICLR 2026) trains the tokenizer as a denoiser: it hides many image
 patches and mixes noise into the latents (`(1 − τ) x + τ γ ε`), and the decoder must still rebuild
 the clean image. The paper's aim is a tokenizer that a generative model can use well.
 
@@ -981,8 +992,8 @@ paper-like              48.371              48.609
 light (Opus-like)        0.944             161.568
 ```
 
-The heavy corruption buys robustness to noisy latents, but costs clean accuracy. Light corruption
-keeps almost all the clean accuracy. The task's reconstructions are clean.
+In our model, heavy corruption buys robustness to noisy latents but costs clean accuracy, and light
+corruption keeps almost all of it. The task's reconstructions are clean.
 
 **What the agent writes.** The corruption, in training only: which patches to hide, how to add
 noise to the latents, and what fills each hidden position so the decoder gets a full sequence in
@@ -996,10 +1007,12 @@ faster than the reference's, on each of three workloads.
 
 **What the agents did.** 3 of 16 models passed. Gemini 4 Argon · Pi had the best final score, 78.3,
 with 27 dB on both PSNRs against the reference's 24.4 and 24.5, and 46.9 s against 50.3 s; its
-method is not described on the task page. Claude Opus 5.5 (75.5) missed on the EMA PSNR of 1 of 3
-workloads. The page describes its run: it hides at most a tenth of the configured share of patches,
+method is not described on the task page. With 16 updates at learning rate 10⁻⁶, most runs ended
+at the reference's 24.4 and 24.5 dB, so wall time decided most scores. Claude Opus 5.5 (75.5) is one
+of them: the same PSNRs, a pass on time (47.5 s), and a miss on the EMA PSNR of 1 of 3 workloads.
+The page describes its run: it hides at most a tenth of the configured share of patches,
 mixes in noise with a weight between 0.5% and 5%, and appends the learned mask token at hidden
-positions before undoing the shuffle. Its own idea saved time instead: building the model draws
+positions before undoing the shuffle. Its own idea is where its score came from, time: building the model draws
 about 343 million random numbers one at a time, and it reproduces the same stream faster with
 Mersenne Twister jump-ahead, bit for bit.
 
@@ -1140,7 +1153,7 @@ step  Newton-Schulz error  greedy best-cubic error
 ```
 
 Newton–Schulz multiplies a small singular value by only 1.5 per step; the greedy schedule grows it
-about 5 times per step and then closes in fast. After ten steps its worst error is 3.5 × 10⁻⁶.
+about 5 times on the first step and about 2.5 times per step after that, then closes in fast. After ten steps its worst error is 3.5 × 10⁻⁶.
 
 **What the agent writes.** The whole method: `optimal_quintic(l, u)`, the best fifth-degree odd
 polynomial for an interval; `optimal_composition(l, steps, …)`, a schedule of them; and
@@ -1149,10 +1162,20 @@ polynomial for an interval; `optimal_composition(l, steps, …)`, a schedule of 
 **How it is judged.** Twelve square, tall and wide matrices with three to six steps each; six of
 them have hidden spectra from the paper's experiments (`σ_min / σ_max` down to about 10⁻⁴·⁵). The
 score counts decimal digits: of the schedule's worst scalar error (12 digits for full marks) and of
-the relative matrix error (8 digits). To pass, on every matrix five quantities must beat the
+the relative matrix error (8 digits), on the six original matrices only. To pass, on every matrix five quantities must beat the
 reference: the worst scalar error, three distances from the true factor, and the cosine similarity.
 
-**What the agents did.** 14 of 16 models passed; 15 scored above the reference (26.3). Its FDI is
+**What the agents did.**
+
+| Run | Relative error | Cosine | Final score | |
+|---|---:|---:|---:|---|
+| Human reference | 0.355 | 0.923 | 26.3 | |
+| Gemini 4 Argon · Pi | 2.54 × 10⁻⁸ | 0.97 | 71.7 | pass |
+| Kimi K3.1 Pro | 2.55 × 10⁻⁸ | 0.97 | 71.7 | pass |
+| Claude Opus 5.5 | 2.86 × 10⁻⁶ | 0.983 | 67.8 | pass |
+
+As of October 26, 2026. Selected rows; the full table is on the task page. 14 of 16 models passed;
+15 scored above the reference (26.3). Its FDI is
 1.6, the second easiest of the 48 tasks, and it sits in the same field as the hardest. Gemini 4
 Argon · Pi and Kimi K3.1 Pro had the best final score, 71.7. Claude Opus 5.5 (67.8) found each
 polynomial by the Remez exchange, built the greedy schedule in double precision (so the paper's
@@ -1162,7 +1185,7 @@ through a nested evaluation scheme, and it mixes degrees up to 17 for each step 
 
 ::: pattern
 **A known answer is a clear target.** Polar Express has an exact oracle (the SVD), an optimal
-polynomial with a classical algorithm (Remez), and a few seconds per check. Nearly every model
+polynomial with a classical algorithm (Remez), and a check that needs no GPU. Nearly every model
 passed. KV Compaction has none of these, and nobody did.
 :::
 
@@ -1174,8 +1197,8 @@ passed. KV Compaction has none of these, and nobody did.
 1. *Every workload decides.* Claude Opus 5.5's KV Compaction run was 108 times faster with higher
    mean accuracy and failed on 2 articles of 24. GPT-6 Astra had DyT's top score and failed on one
    workload's inference time.
-2. *Fit the method to the measurement.* Short runs and clean evaluation favored light corruption in
-   DeTok, and speed in DyT; averaging sixteen samples suited PSNR and SSIM.
+2. *Fit the method to the measurement.* Short runs left speed to decide most scores in DeTok and
+   DyT; averaging sixteen samples suited the world model's PSNR and SSIM.
 3. *Training data must be exactly right.* RAGEN's masks and rewards, Flow-OPD's replayed
    log-probabilities and the Fréchet queue's gradients fail silently when they are wrong.
 :::

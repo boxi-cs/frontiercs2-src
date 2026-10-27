@@ -14,7 +14,7 @@ const LECTURE = {
   number: 13,
   title: "Robotics",
   tagline: "Actions from noise, and a walker on a deadline",
-  lead: "The two Robotics tasks of FrontierCS 2: the loop that samples a robot's next moves by removing noise, and a recipe that trains a four-legged robot to follow joystick commands in twelve minutes. For each one: the idea, the part the agent writes, how a run is judged, and what the agents did.",
+  lead: "The two Robotics tasks of FrontierCS 2: the loop that samples a robot's next moves by removing noise, and a recipe that trains a four-legged robot to follow joystick commands in minutes of GPU time; the task gives a procedure twelve minutes to beat it. For each one: the idea, the part the agent writes, how a run is judged, and what the agents did.",
   heroDemo: "flowMini",
   heroLabel: "Diffusion Policy · from noise to two good actions",
   heroCaption: "The clean guess of thirty samples over 100 noise levels: each starts at the average, 0, then commits to left or right.",
@@ -22,8 +22,8 @@ const LECTURE = {
   whySub: "Three lessons the Robotics tasks teach",
   why: [
     ["Average the right thing", "Regression averages <b>two good actions into a bad one</b>. A denoising sampler keeps both, because each step commits a little more."],
-    ["Calls are the cost", "Five well-placed network calls with a <b>second-order step</b> do the work of a hundred, about <b>19 times faster</b>."],
-    ["Every metric, every workload", "In both tasks every run beat the reference's score, and <b>none passed</b>: one group of episodes, or one penalty, was enough to fail."],
+    ["Calls are the cost", "Five well-placed network calls with a <b>second-order step</b> come close to a hundred, about <b>19 times faster</b>. But \"close\" is exactly what the pass rule punishes."],
+    ["Every metric, every workload", "In Diffusion Policy all 16 runs beat the reference's score, and in MuJoCo Playground ten did; <b>none passed</b> in either: one group of episodes, or one penalty, was enough to fail."],
   ],
   ctaTitle: "Ready to turn noise into a plan?",
   minutes: "About 60 minutes",
@@ -36,7 +36,7 @@ const CHAPTERS = [
     subtitle: "Why averaging fails when there are two good ways to act",
     abstract: "Diffusion Policy generates a robot's actions the way image models generate pictures: start from noise and remove it step by step, a trained network guiding each step. Unlike regression, it keeps every way the demonstrators solved the task.",
     tags: ["multimodal actions", "regression", "denoising", "DDPM"],
-    hero: "code:denoise", heroCaption: "The network's job: guess the clean action from a noisy one",
+    hero: "code:denoise", heroCaption: "The best clean guess from a noisy action (a real network guesses the noise; the two convert exactly)",
     sections: [
       { id: "idea", title: "Generating actions", html: `
         <p>A robot policy maps what the robot sees to what it does next. The usual way to learn one from human demonstrations is regression: predict the demonstrated action, with the squared error as the loss. <em>Diffusion Policy</em> (Chi et al., RSS 2023) instead learns to <b>generate</b> actions the way image models generate pictures: start from random noise and remove it step by step, with a trained network guiding each step. The paper's point is that demonstrations are often <b>multimodal</b>: people solve the same situation in different ways, and regression averages those ways into one that nobody used.</p>` },
@@ -45,7 +45,7 @@ const CHAPTERS = [
         ${code("demos")}
         <p>The regression answer, 0.112, steers almost straight into the obstacle. No demonstrator did that.</p>` },
       { id: "denoise", title: "Denoising, one step at a time", html: `
-        <p>Diffusion training adds noise to demonstrated actions at many levels <code>t</code>, from 0 (clean) to 100 (pure noise). At level <code>t</code> a clean action <code>a</code> becomes <code>x = sqrt(ab) · a + sqrt(1 − ab) · noise</code>, where <code>ab</code> (alpha-bar) falls from 1 to 0 along a <b>schedule</b>; Diffusion Policy uses the cosine schedule below. The network learns to guess the clean action from <code>x</code> and <code>t</code>.</p>
+        <p>Diffusion training adds noise to demonstrated actions at many levels <code>t</code>, from 0 (clean) to 100 (pure noise). At level <code>t</code> a clean action <code>a</code> becomes <code>x = sqrt(ab) · a + sqrt(1 − ab) · noise</code>, where <code>ab</code> (alpha-bar) falls from 1 to 0 along a <b>schedule</b>; Diffusion Policy uses the cosine schedule below. The network learns to guess the noise that was added; subtracting it gives a guess of the clean action. Our toy computes that clean guess directly.</p>
         <p>We skip the training and use the best possible guess, which for our two-mode data can be written in closed form: the expected clean action given <code>x</code>. A trained network approximates this function.</p>
         ${code("denoise")}
         ${predict("At level 100 no signal is left. What should the best guess be, whatever x is?", "<p>The average of the data, 0 here: with no information, the guess that minimizes the squared error is the mean. That is the regression answer, and it is why a single network call is not enough.</p>")}
@@ -59,7 +59,7 @@ const CHAPTERS = [
   {
     slug: "2-fewer-calls", nav: "Fewer calls", title: "Diffusion Policy: Fewer Network Calls",
     subtitle: "The task removes the sampler; the agent writes a faster one",
-    abstract: "A hundred network calls per plan are slow. Deterministic jumps, well-placed levels and a second-order update do the same work in five calls. The task scores quality gained over a 20-step sampler times speed, and passes only a sampler at least as good as the reference everywhere.",
+    abstract: "A hundred network calls per plan are slow. Deterministic jumps, well-placed levels and a second-order update come close in five calls. The task scores quality gained over a 20-step sampler times speed, and passes only a sampler at least as good as the reference everywhere.",
     tags: ["DDIM", "DPM-Solver++", "Push-T", "latency"],
     hero: "code:dpm2", heroCaption: "A second-order jump reuses the previous guess",
     sections: [
@@ -69,14 +69,14 @@ const CHAPTERS = [
         ${code("ddim")}
         <p>One call returns the guess at full noise, which is the average again: all 1,000 samples go into the obstacle. Ten calls are already about as good as a hundred.</p>` },
       { id: "placement", title: "Where the calls go, and a second-order step", html: `
-        <p>With few calls, placement matters. Evenly spaced levels waste calls at the top of the cosine schedule, where almost no signal is left, and stop at level 20, where the last guess is still blurred. A <b>second-order</b> update (DPM-Solver++) also reuses the previous guess: it measures the jump in log signal-to-noise ratio <code>lam</code> and extrapolates from the last two guesses, at no extra network call.</p>
+        <p>With few calls, placement matters. Evenly spaced levels waste calls at the top of the cosine schedule, where almost no signal is left, and stop at level 20, where the last guess is still blurred. (With five calls, placement alone gains nothing in our toy; see below.) A <b>second-order</b> update (DPM-Solver++) also reuses the previous guess: it measures the jump in log signal-to-noise ratio <code>lam</code> and extrapolates from the last two guesses, at no extra network call.</p>
         ${code("dpm2")}
         ${demo("steps", "Demo 2 · Fewer calls", "pick a preset or type levels", "Try Exercise 3 here: find three levels that leave fewer than 30 plans in the middle with second order on.")}
-        <p>Three well-placed calls beat three even ones by a wide margin, and the second-order step halves the misses of five calls. The levels 95, 70, 45, 22 and 5 are the ones Claude Opus 5.5 chose (see below). In our toy, "middle" is a miss; in the task, a blurred plan pushes the T-block less accurately.</p>` },
+        <p>Three well-placed calls beat three even ones by a wide margin. With five first-order calls, placement alone gains nothing here (54 misses against 53); the second-order step is what halves the misses. The levels 95, 70, 45, 22 and 5 are the ones Claude Opus 5.5 chose (see below). In our toy, "middle" is a miss; in the task, a blurred plan pushes the T-block less accurately.</p>` },
       { id: "writes", title: "What the agent writes", html: `
-        <p>The task removes the body of <code>conditional_sample</code>, the sampling loop. The trained transformer, the normalization, the observation window and the controller around the loop stay fixed. The agent decides how many denoising steps to take (at least 1 and at most 200 network calls per prediction), where to place them and how each step updates the sample. The loop must keep one contract: the entries of the plan fixed by the observations (selected by <code>condition_mask</code>) must come back unchanged, and every entry must be finite. The statement's own example:</p>
+        <p>The task removes the body of <code>conditional_sample</code>, the sampling loop. The trained transformer, the normalization, the observation window and the controller around the loop stay fixed. The agent decides how many denoising steps to take (at least 1 and at most 200 network calls per prediction), where to place them and how each step updates the sample. The loop must keep one contract: the entries of the plan fixed by the observations (selected by <code>condition_mask</code>) must come back unchanged, and every entry must be finite. Our check of both rules, on the statement's own example:</p>
         ${code("mask")}
-        <p>(<code>r == r</code> is false only for NaN.) Fixing the seed, looking up answers for known starting states or inspecting the environment is forbidden; the sampler runs in a separate process that can only ask for network evaluations and fresh random numbers.</p>` },
+        <p>Fixing the seed, looking up answers for known starting states or inspecting the environment is forbidden; the sampler runs in a separate process that can only ask for network evaluations and fresh random numbers.</p>` },
       { id: "judged", title: "How it is judged", html: `
         <p>A simulated robot pushes a T-shaped block into a target region (<b>Push-T</b>). Each episode runs at most 300 control steps; the controller observes 2 steps, plans 10 and executes 8 before planning again. The reward of a step is the share of the target the block covers, divided by 0.95 and capped at 1; an episode succeeds when the coverage passes 95%. Candidate and reference get the same episodes and the same diffusion seeds, three repetitions per condition, on 2 CPUs.</p>
         <p>To <b>pass</b>, on every group of episodes the sampler must match or beat the authors' 100-step sampler on mean best reward and on success rate, and be strictly faster both per prediction and for the whole run. The <b>score</b> is separate. It compares each workload with a "naive" anchor, a plain 20-step DDPM sampler measured on the same machine (<code>qn</code>, <code>ln</code>, <code>tn</code> below): quality gained over the anchor, times the worse of two speed ratios.</p>
@@ -91,9 +91,9 @@ const CHAPTERS = [
         <tr><td>Kimi K3.1 Pro</td><td>13.4</td><td>0.333</td><td>0.966</td><td>120</td><td>55.2</td><td>${fail}</td></tr>
         <tr><td>Step 5 Preview</td><td>14.2</td><td>0.417</td><td>0.966</td><td>132</td><td>54.1</td><td>${fail}</td></tr></table></div>
         <p class="meta">Means over the hidden workloads; the reference row shows medians. As of October 26, 2026. No model passed. <a href="${TASK}diffusion-policy" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p>No model passed, and all sixteen scored above the human reference (14.0). Every run was much faster than the 100-step loop; what failed the pass rule was success or reward in some group of episodes. Step 5 Preview had the highest success rate of these, 0.417, and still failed. GLM 5.3 had the best final score, 59.8.</p>
+        <p>No model passed, and all sixteen scored above the human reference (14.0). Every run was faster on average than the 100-step loop (most by 4× or more on the whole workload); for most runs, the means show success or reward below the reference. Step 5 Preview had the highest success rate of these, 0.417, and still failed. GLM 5.3 had the best final score, 59.8.</p>
         <p><b>Claude Opus 5.5</b> (57.1) called the network five times, at levels 95, 70, 45, 22 and 5, starting from Gaussian noise at the first. At each level it made a clean guess, clipped to the range the scheduler allows, and wrote the observed entries back in before each call. Between levels it took second-order DPM-Solver++ jumps along the deterministic path, measured in log signal-to-noise ratio, and corrected each landing point with the UniPC corrector, which reuses the guess just made, so the correction costs no extra call. Its last guess became the plan. At 60.4 ms against 1,150 ms, that is about 12 ms per network call for both samplers (our division).</p>
-        ${callout("pitfall", "FAST IS NOT ENOUGH", "<p>The pass rule asks for reward and success at least as high in every group, and success is a coin with few tosses per group. A five-call sampler that is 19 times faster can still lose one group by one episode.</p>")}` },
+        ${callout("pitfall", "FAST IS NOT ENOUGH", "<p>The pass rule asks for reward and success at least as high in every group, and success is a coin with few tosses per group. A sampler 19 times faster could lose a group by a single episode. Claude Opus 5.5's success rate, 0.167 against 0.25, was lower overall.</p>")}` },
     ],
     takeaways: ["One call gives the average.", "Place the calls; reuse the last guess.", "All 16 beat the score; none passed."],
   },
@@ -110,7 +110,7 @@ const CHAPTERS = [
         <p>The Go1 environment pays, at every control step (50 per second), for tracking the command and charges for effort. Tracking uses a bell curve, <code>exp(−error² / 0.25)</code>, worth 1.0 for linear speed and 0.5 for turning; the action-rate penalty (−0.01 × squared change of the action) keeps motion smooth, and the energy penalty (−0.001 × |joint speed × torque|) keeps it cheap. There are more terms, for posture, feet and falls. The step reward is multiplied by the time step and clipped at zero.</p>
         <p>Our walker is a body on a plane with two legs. The average leg push sets its forward speed, the difference sets its turning speed, and the right leg is 20% weaker, which the policy must discover. Speeds follow the push with a lag of a quarter second, and the speed the robot senses is noisy. A command is resampled every 5 seconds; an episode is 1,000 steps (20 s). The policy is linear: each leg's push is a weighted sum of the two commands and the two tracking errors, eight weights in all.</p>
         ${code("walker")}
-        <p>A perfect walker would earn 1.5 × 0.02 × 1,000 = 30 in our toy. Standing still earns 14.19, since commands near zero are partly met by doing nothing. The hand-made policy ignores the weak leg and the errors, and turns poorly.</p>` },
+        <p>A walker that tracks perfectly at no cost would earn 1.5 × 0.02 × 1,000 = 30 in our toy. Standing still earns 14.19, since commands near zero are partly met by doing nothing. The hand-made policy ignores the weak leg and the errors, and turns poorly.</p>` },
       { id: "search", title: "Learning by trial", html: `
         <p>PPO is too large for one screen. <b>Random search</b> shows the same loop in small: try the policy with small random changes to its weights, in both directions, on the same episode; move the weights toward the changes that earned more. Each iteration costs eight episodes.</p>
         ${code("train")}
@@ -151,8 +151,8 @@ const CHAPTERS = [
         <tr><td>Qwen 3.8 Max</td><td>4.6</td><td>0.0889</td><td>27.5</td><td>466</td><td>821</td><td>47.9</td><td>${fail}</td></tr></table></div>
         <p class="meta">Means over the hidden workloads; the reference row shows medians. Penalties are shown as positive numbers, so lower is better for them. As of October 26, 2026. No model passed. <a href="${TASK}mujoco-playground" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>No model passed; ten scored above the human reference (49.6) and three level with it. GPT-6 Astra had the best final score, 50.6. Two runs (Gemini 4 Argon · Pi and DeepSeek V4.1 Flash 1017) scored 0.0. The spread is narrow: the reference recipe is already good.</p>
-        <p><b>Claude Opus 5.5</b> (50.1) kept Brax's PPO loss, networks and observation normalizer but wrote its own training loop, collecting rollouts from 8,192 simulated robots. It trained on the authors' flat-ground environment, reward and randomization, with pushes left off. Over the last 60% of the budget, it lowered the learning rate and the entropy bonus linearly to a tenth of their starting values, so the final policy settles instead of being a snapshot of noisy updates. Its own idea was to use the deadline: it trained in short compiled chunks, timed each one, stopped when the next would not finish a safety margin before the deadline, and skipped evaluation rollouts. In its own estimate, that gave about 360 million environment steps instead of 200 million. It earned more reward and tracked better, but its action-rate penalty (5.06 × 10⁻³) was higher than the reference's (4.96 × 10⁻³): as in our walker, better tracking came with a penalty that got worse.</p>
-        ${callout("pitfall", "NOISE DECIDES CLOSE RACES", "<p>Across training seeds, the reference's flat-ground reward varies by about 0.2 to 0.3, and the same seed does not reproduce exactly on a GPU. With three development submissions, each one a single noisy sample, an agent cannot tell a gain of 0.5 from luck.</p>")}` },
+        <p><b>Claude Opus 5.5</b> (50.1) kept Brax's PPO loss, networks and observation normalizer but wrote its own training loop, collecting rollouts from 8,192 simulated robots. It trained on the authors' flat-ground environment, reward and randomization, with pushes left off. Over the last 60% of the budget, it lowered the learning rate and the entropy bonus linearly to a tenth of their starting values, so the final policy settles instead of being a snapshot of noisy updates. Its own idea was to use the deadline: it trained in short compiled chunks, timed each one, stopped when the next would not finish a safety margin before the deadline, and skipped evaluation rollouts. In its own estimate, that gave about 360 million environment steps instead of 200 million. It earned more reward and tracked better, but its action-rate penalty (5.06 × 10⁻³) was worse than the reference's (4.96 × 10⁻³) on the task page. GPT-6 Astra tied the reference at 4.96, and a tie is not strictly better. In both, as in our walker, better tracking came with a penalty that did not improve.</p>
+        ${callout("pitfall", "NOISE DECIDES CLOSE RACES", "<p>Across training seeds, the reference's flat-ground reward has a standard deviation of about 0.2 to 0.3, and the same seed does not reproduce exactly on a GPU. With three development submissions, each one a single noisy sample, an agent cannot reliably tell a gain of 0.5 from luck (our estimate), and development feedback covers only flat ground and pushes, never rough terrain.</p>")}` },
     ],
     takeaways: ["720 s, same as the reference.", "Score from reward; pass needs all five.", "Better tracking can cost a penalty."],
   },
@@ -164,13 +164,13 @@ const CHAPTERS = [
     hero: "toc",
     sections: [
       { id: "map", title: "Knowledge map", html: `<div class="map">
-        <div class="card"><h3>Diffusion Policy</h3><ul><li>Regression averages the modes</li><li>Denoising commits step by step</li><li>5 placed calls, second order</li><li>Score: gain × speed; pass: never worse</li></ul></div>
+        <div class="card"><h3>Diffusion Policy</h3><ul><li>Regression averages the modes</li><li>Denoising commits step by step</li><li>5 placed calls, second order: close, not equal</li><li>Score: gain × speed; pass: never worse</li></ul></div>
         <div class="card"><h3>MuJoCo Playground</h3><ul><li>Reward: track the command, little effort</li><li>Train within 720 s</li><li>Score from reward; pass on all five metrics</li><li>Use the whole clock</li></ul></div></div>` },
       { id: "check", title: "Check your understanding", html: `<div data-demo="quiz"><div class="demo-body"></div></div>` },
       { id: "exercises", title: "Exercises", html: `
         <p>The exercises use the programs from the notes. Copy them from the earlier chapters and run them with Python 3.</p>
         <h3>Exercise 1 ★ (modify)</h3>
-        <p>Change the demonstrations to 70% left and 30% right. What is the regression answer now, and how does the 100-call sampler split?</p>
+        <p>Change the demonstrations to 70% left and 30% right. What is the regression answer now, and how does the 100-call sampler split? (Also give <code>denoise</code> the mode weights 0.7 and 0.3: multiply each <code>weight</code> by its share.)</p>
         <h3>Exercise 2 ★ (experiment)</h3>
         <p>Run <code>ddim</code> with one call at level 50 instead of 100 (<code>[50]</code>). What do the samples look like, and why?</p>
         <details class="reveal"><summary>Solution</summary><p>470 of 1,000 land in the middle. A single guess at level 50 still blends the two modes for any sample near 0, and the start, pure noise, is treated as if it were half signal. One call is not enough at any level.</p></details>
@@ -197,15 +197,15 @@ const QUIZ = [
     opts: ["−1 or +1 at random", "About 0, straight into the obstacle", "+1, the larger value", "Whatever the last demonstration did"],
     a: 1, why: "Regression with a squared-error loss predicts the mean, about 0: an action no demonstrator took." },
   { q: "A sampler makes a single network call at full noise. What does it return?",
-    opts: ["A sample from one of the two modes", "The average of the data", "Pure noise", "The last training example"],
-    a: 1, why: "At full noise the input carries no information, so the best guess is the mean of the data, the regression answer." },
-  { q: "Why can five well-placed calls do the work of a hundred?",
-    opts: ["The network is retrained for five steps", "Deterministic jumps can skip far, few calls are wasted at levels with no signal, and a second-order step reuses the previous guess", "Five calls use a bigger network", "The robot moves five times slower"],
-    a: 1, why: "DDIM-style jumps allow large strides; placement avoids the flat top of the schedule; DPM-Solver++ adds accuracy at no extra call." },
+    opts: ["The average of the data", "A sample from one of the two modes", "Pure noise", "The last training example"],
+    a: 0, why: "At full noise the input carries no information, so the best guess is the mean of the data, the regression answer." },
+  { q: "Why can five well-placed calls come close to a hundred?",
+    opts: ["The network is retrained for five steps", "Five calls use a bigger network", "The robot moves five times slower", "Deterministic jumps can skip far, few calls are wasted at levels with no signal, and a second-order step reuses the previous guess"],
+    a: 3, why: "DDIM-style jumps allow large strides; placement avoids the flat top of the schedule; DPM-Solver++ adds accuracy at no extra call. Close is not equal: in the task, Opus's five-call sampler had a lower success rate than the reference, and failed." },
   { q: "In the MuJoCo Playground task, what decides the score, and what decides a pass?",
-    opts: ["Both depend only on mean reward", "Score: mean episode reward; pass: all five metrics strictly better than the reference on all 15 workloads", "Score: training time; pass: reward above 30", "Score: energy; pass: tracking"],
-    a: 1, why: "score = 100 r / (r + 30); the pass rule compares every metric on every workload with no tolerance." },
-  { q: "Claude Opus 5.5's policy earned more reward and tracked better than the reference. Why did it fail?",
-    opts: ["It trained past the 720-second deadline", "It shipped pretrained weights", "Its action-rate penalty was higher than the reference's", "It never tested on rough terrain"],
-    a: 2, why: "5.06 × 10⁻³ against 4.96 × 10⁻³ on the task page. A metric that is worse in any workload is enough to fail." },
+    opts: ["Score: mean episode reward; pass: all five metrics strictly better than the reference on all 15 workloads", "Both depend only on mean reward", "Score: training time; pass: reward above 30", "Score: energy; pass: tracking"],
+    a: 0, why: "score = 100 r / (r + 30); the pass rule compares every metric on every workload with no tolerance." },
+  { q: "Claude Opus 5.5's policy earned more reward and tracked better than the reference. What in the results table shows why it failed?",
+    opts: ["It trained past the 720-second deadline", "It shipped pretrained weights", "Its action-rate penalty was worse than the reference's", "It never tested on rough terrain"],
+    a: 2, why: "5.06 against 4.96 × 10⁻³ on the task page. The table shows means, not each workload, but a metric worse in any one workload is enough to fail." },
 ];

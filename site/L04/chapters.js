@@ -45,6 +45,7 @@ const CHAPTERS = [
       { id: "rule", title: "The pass rule as code", html: `
         ${code("passes")}
         <p>The first candidate is much faster on average, but its latency on the second workload is one unit worse, so it fails. The second improves everything by a little, and it passes.</p>
+        <p>This toy is strict on every metric. Some tasks allow a tie on a metric: in BBQ the worst latency may equal the reference's, and in MetaOpt an equal gap passes. Each task page states its own rule.</p>
         <p>The agent also gets <b>train calls</b>: it can submit a version and see its score and how many public workloads it beats. The hidden workloads are not the public ones. In BBQ they include a bitmap width that train feedback never shows.</p>` },
       { id: "tasks", title: "The three Network tasks", html: `
         <table><tr><th>Task</th><th>What the agent writes</th><th>Scored on</th><th>Pass</th><th>Best final score</th></tr>
@@ -75,7 +76,7 @@ const CHAPTERS = [
         <p>With width 4, two levels give 16 priorities and three give 64. The hidden workloads go up to three levels of width 16: 4,096 priorities.</p>` },
       { id: "removed", title: "What the task removes", html: `
         <p>The task keeps the circuit around the queue and removes the logic of its tree levels. That logic is a Python program that writes the circuit (SystemVerilog), and the agent writes it back. Each level must serve enqueue, dequeue-min and dequeue-max, even when operations arrive back to back.</p>
-        <p>The judge simulates every design on operation traces at five tree sizes. Every response must match a correct queue. Then it measures two speeds on each workload: <b>operations per second</b>, and the <b>latency</b> of the slowest operation. A pass needs both to beat the reference on every workload.</p>` },
+        <p>The judge simulates every design on nine operation traces at five tree sizes. Every response must match a correct queue. Then it measures two speeds on each workload: <b>operations per second</b>, and the <b>latency</b> of the slowest operation. To pass, throughput must beat the reference and the worst latency must be no longer, on every workload.</p>` },
     ],
     takeaways: ["A bit is 1 when its counter is above 0.", "Follow the first 1 at each level.", "The next operation must see this one's result."],
   },
@@ -88,7 +89,7 @@ const CHAPTERS = [
     sections: [
       { id: "model", title: "How the clock is set", html: `
         <p>A circuit works in ticks of a clock. Between ticks, values wait in <b>registers</b>. In each tick, values leave the registers, pass through logic, and must settle in the next registers before the next tick. The <b>clock period</b> is the time of the slowest such stretch.</p>
-        <p>The task times every design with a fixed model. Synthesis cuts the logic into <b>lookup tables</b> (LUTs), the basic gate of an FPGA. Each LUT on a stretch costs 500 ps, every period carries a fixed 300 ps, and a stretch that starts at a memory read costs 1,000 ps more.</p>
+        <p>The task times every design with a fixed model. Synthesis cuts the logic into <b>lookup tables</b> (LUTs), the basic gate of an FPGA. Each LUT on a stretch costs 500 ps, every period carries a fixed 300 ps, a stretch that starts at a memory read costs 1,000 ps more, and one that starts at a FIFO status flag costs 500 ps more.</p>
         ${code("period")}
         <p>Speed is operations per second: operations per cycle divided by the period. Every design in the case study finishes about 0.68 operations per cycle, so the period decides.</p>
         ${code("opsps")}
@@ -96,11 +97,11 @@ const CHAPTERS = [
       { id: "wait", title: "Where the human reference waits", html: `
         <p>The reference keeps the top level in registers. Below it, the counters sit in <b>memory blocks</b>, which pack thousands of values into little space. A lower level takes three stages: search the row and ask memory for the counter; receive the counter; update it and write it back.</p>
         <p>A memory read lands late in its cycle. By then, an operation just ahead may have changed the same counter. So after the read, the level compares the counter with what the operations ahead wrote and keeps the newest value. That comparison costs three LUTs after the memory: <b>2,800 ps</b> on the three smallest trees. On the two largest, the search for the first 1 is slower still: 3,300 and 3,800 ps.</p>
-        ${predict("The reference's slowest stretch is memory → 3 LUTs → register. Which change would help more: one LUT fewer after the memory, or no memory at all?", "<p>Two LUTs fewer after the memory gives 1,800 ps; removing the memory from the same three-LUT stretch also gives 1,800 ps. The two passing agents took these two routes.</p>")}` },
+        ${predict("The reference's slowest stretch is memory → 3 LUTs → register. Which change would help more: one LUT fewer after the memory, or no memory at all?", "<p>No memory. One LUT fewer gives 300 + 1,000 + 2 × 500 = 2,300 ps; the same three LUTs after a register give 1,800 ps. Gemini 4 Argon · Pi went further on the memory side and cut two LUTs (1,800 ps on width 4); Claude Opus 5.5 removed the memory.</p>")}` },
       { id: "two", title: "Two ways to remove the wait", html: `
-        <p><b>Gemini 4 Argon</b> kept every memory. It noticed that <em>which</em> value is newest does not depend on the value; it depends on which operations ahead touched the same counter, and registers already hold that. So it computes the choice from registers while the read is in flight. When the counter lands, one LUT picks it or a newer value: memory → 1 LUT, the floor of 1,800 ps.</p>
+        <p><b>Gemini 4 Argon · Pi</b> (the case study calls it Gemini 4 Argon) kept every memory. It noticed that <em>which</em> value is newest does not depend on the value; it depends on which operations ahead touched the same counter, and registers already hold that. So it computes the choice from registers while the read is in flight. When the counter lands, one LUT picks it or a newer value: memory → 1 LUT, the floor of 1,800 ps.</p>
         <p><b>Claude Opus 5.5</b> removed the memory. Each bucket gets three registers: its bit, its count, and a flag for "count is 1". Registers can be read at any moment, so a level needs one stage, not three. An operation leaves the level before the next one enters it, so there is no newer value to look for.</p>
-        <table><tr><th>Tree</th><th>Reference (ps)</th><th>Gemini 4 Argon (ps)</th><th>Claude Opus 5.5 (ps)</th></tr>
+        <table><tr><th>Tree</th><th>Reference (ps)</th><th>Gemini 4 Argon · Pi (ps)</th><th>Claude Opus 5.5 (ps)</th></tr>
         <tr><td>2 levels, width 4</td><td>2,800</td><td>1,800</td><td>1,800</td></tr>
         <tr><td>2 levels, width 8</td><td>2,800</td><td>2,300</td><td>1,800</td></tr>
         <tr><td>3 levels, width 4</td><td>2,800</td><td>1,800</td><td>1,800</td></tr>
@@ -121,7 +122,7 @@ const CHAPTERS = [
     subtitle: "Search for the inputs on which a fast shortcut does worst",
     abstract: "Operators route wide-area traffic with fast heuristics instead of the optimal linear program. MetaOpt finds the traffic on which a heuristic falls furthest behind. The task removes that search.",
     tags: ["linear program", "POP", "demand pinning", "adversarial input"],
-    hero: "metaopt", heroCaption: "Pick a demand for each pair; the page solves the LPs exactly.",
+    hero: "metaopt", heroCaption: "Pick a demand for each pair; the page solves the LPs.",
     sections: [
       { id: "idea", title: "Optimal routing and two shortcuts", html: `
         <p>A wide-area network routes traffic between many pairs of sites. The best routing solves a <b>linear program</b> (LP), which can be slow, so operators use <b>heuristics</b>. A heuristic is fast but sometimes far from optimal. <b>MetaOpt</b> (NSDI 2024) asks: <em>on which traffic does the heuristic do worst?</em> The answer tells an operator how much the heuristic can cost.</p>
@@ -140,9 +141,9 @@ const CHAPTERS = [
       { id: "search", title: "Searching for the worst traffic", html: `
         <p>Like the task, we allow demand levels 0, 6 and 18. Five pairs give 3<sup>5</sup> = 243 matrices, few enough to try them all.</p>
         ${code("search")}
-        <p>The task has 27 pairs, at most nine of them nonzero, and only 256 calls to the exact checker per instance. There are far too many matrices to try them all:</p>
+        <p>In our network no pinned load can overload a link, so all 243 matrices are valid. The task has 27 pairs, at most nine of them nonzero, and only 256 calls to the exact checker per instance. There are far too many matrices to try them all:</p>
         ${code("count")}
-        <p>The human reference solves one large mixed-integer program, MetaOpt's own method. <b>Claude Opus 5.5</b> (final score 52.0, ${pass}) wrote its own small simplex solver to score candidates privately, then ran a local search with four threads. Its own idea was to seed the search from <b>cuts</b>: small sets of links that every path of the big demands must cross, crowded with small pinned demands, just like the A–B–C links above. Eleven of sixteen models scored above the reference; four passed every instance.</p>` },
+        <p>The human reference solves one large mixed-integer program, MetaOpt's own method. <b>Claude Opus 5.5</b> (final score 52.0, ${pass}; three other runs tied at 52.0 and passed too) wrote its own small simplex solver to score candidates privately, then ran a local search with four threads. Its own idea was to seed the search from <b>cuts</b>: small sets of links that every path of the big demands must cross, crowded with small pinned demands, just like the A–B–C links above. Eleven of sixteen models scored above the reference; four passed every instance.</p>` },
     ],
     takeaways: ["gap = OPT − max(POP, DP).", "Crowd the links the big demands need.", "Score candidates privately; spend the oracle calls well."],
   },
@@ -155,10 +156,10 @@ const CHAPTERS = [
     sections: [
       { id: "counts", title: "Four counts", html: `
         <p>A shared cluster runs many machine-learning training jobs. Each round (120 seconds in the task), a <b>scheduler</b> chooses which jobs run on the cluster's GPUs. Many jobs change their batch size as they train, and with it their speed. <b>Shockwave</b> (NSDI 2023) plans for these changes ahead, to finish jobs fast while treating each one fairly.</p>
-        <p>The task judges a schedule on four counts, and a pass must beat the reference on all four, on both hidden traces:</p>
+        <p>The task judges a schedule on two hidden traces of eight jobs each, on four counts, and a pass must beat the reference strictly on all four, on both traces:</p>
         <ul><li><b>makespan</b>: when the last job finishes;</li>
         <li><b>average JCT</b>: the mean job completion time (finish minus arrival);</li>
-        <li><b>worst ρ</b>: a job's finish-time fairness ρ is its JCT divided by the time it would take with a fair share of the cluster; the worst ρ is the largest;</li>
+        <li><b>worst ρ</b>: a job's finish-time fairness ρ is its JCT divided by the time it would take with a fair share of the cluster (its time alone times <code>max(1, jobs / GPUs)</code>, so 2 for eight jobs on four GPUs); the worst ρ is the largest;</li>
         <li><b>unfair jobs</b>: the share of jobs with ρ above 1.05.</li></ul>` },
       { id: "sim", title: "A small cluster", html: `
         <p>Our cluster has four GPUs and six jobs. Each job needs a fixed number of GPUs, and its epochs get shorter as its batch size grows.</p>
@@ -167,16 +168,16 @@ const CHAPTERS = [
         ${predict("Shortest remaining time first is known to minimize average completion time. Will it also win on makespan and fairness?", "<p>No. In the run below it has the best average JCT and the fewest unfair jobs, but the longest makespan, and FIFO and Fairest beat it on other counts.</p>")}
         ${code("policies")}
         ${demo("sched", "Demo 4 · Three policies on four GPUs", "pick a policy", "Each bar is one job on one GPU for one round; a short bar is a job that finished mid-round.")}
-        <p>Each policy wins somewhere and loses somewhere. FIFO and Fairest finish the trace first. SRTF has the shortest average JCT and the fewest unfair jobs. Fairest has the best worst ρ, but it pushes every job just over 1.05. Beating a reference on all four at once is much harder than on any one.</p>` },
+        <p>Each policy wins somewhere and loses somewhere. FIFO and Fairest finish the trace first. SRTF has the shortest average JCT and the fewest unfair jobs. Fairest has the best worst ρ, but every one of its six jobs ends above 1.05. Beating a reference on all four at once is much harder than on any one.</p>` },
       { id: "agents", title: "What the agents did", html: `
-        ${callout("pitfall", "THREE OUT OF FOUR IS A FAIL", "<p>Claude Opus 5.5 had the best fairness of all sixteen runs (12.5% unfair jobs, worst ρ 1.18, against 62.5% and 1.51 for the reference) and a shorter average JCT. But its mean makespan was 16,700 s, against 16,100 s for the reference, so it failed. Its final score, 47.1, is above most runs that passed.</p>")}
-        <p>Opus kept its own copy of every job's state, copied the simulator's batch-size rules to forecast how long each job still needs, and searched over job orders for the one with the best combined score. It weighted the two fairness terms three times as much as the others; the makespan slipped.</p>
+        ${callout("pitfall", "THREE OUT OF FOUR IS A FAIL", "<p>Claude Opus 5.5 had the best fairness of all sixteen runs (12.5% unfair jobs, worst ρ 1.18, against 62.5% and 1.51 for the reference) and a shorter average JCT. But its mean makespan was 16,700 s, against 16,100 s for the reference, so it failed. Its final score, 47.1, is third of sixteen: level with Gemini 4 Argon · Antigravity, which passed, and above GPT-6.1 Terra, which passed with 46.5.</p>")}
+        <p>Opus kept its own copy of every job's state, copied the simulator's batch-size rules to forecast how long each job still needs, and searched over job orders for the one with the best combined score. That score gave the two fairness terms three times their base weight.</p>
         <table><tr><th>Run</th><th>Average JCT (s)</th><th>Makespan (s)</th><th>Unfair jobs</th><th>Worst ρ</th><th></th></tr>
         <tr><td>Human reference</td><td>8,970</td><td>16,100</td><td>62.5%</td><td>1.51</td><td></td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>7,690</td><td>15,300</td><td>18.8%</td><td>1.24</td><td>${pass}</td></tr>
         <tr><td>GPT-6 Astra</td><td>7,700</td><td>15,500</td><td>18.8%</td><td>1.24</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>7,660</td><td>16,700</td><td>12.5%</td><td>1.18</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the two hidden traces. Four models passed; all sixteen scored above the reference. <a href="${TASK}shockwave" target="_blank" rel="noopener">Full table ↗</a></p>` },
+        <p class="meta">Selected rows; means over the two hidden traces, as of October 26, 2026. Four models passed; all sixteen scored above the reference. <a href="${TASK}shockwave" target="_blank" rel="noopener">Full table ↗</a></p>` },
     ],
     takeaways: ["Four counts, all must improve.", "Each simple policy wins one and loses another.", "A weighted score can hide a lost metric."],
   },
@@ -217,16 +218,16 @@ const CHAPTERS = [
 ];
 
 const QUIZ = [
-  { q: "A run scores 47.1 on Shockwave, above three runs that passed. How can it fail?",
+  { q: "A run scores 47.1 on Shockwave, as high as a run that passed. How can it fail?",
     opts: ["Its code did not build", "It lost to the reference on one metric (makespan), and a pass needs every metric", "Its score was computed on the public traces only", "Scores above 47 are capped"],
-    a: 1, why: "The pass rule compares every metric on every hidden workload. Opus 5.5 was better on three counts and worse on makespan." },
+    a: 1, why: "The pass rule compares every metric on every hidden workload. Claude Opus 5.5 was better on three counts and worse on makespan." },
   { q: "In the 16-priority BBQ with packets 1, 1, 2, 9, 9, which removal turns a top-level bit to 0?",
     opts: ["The first", "The second", "The third", "None of the first three"],
     a: 2, why: "The third removal takes priority 2, the last packet in row 0, so row 0's counter at the top reaches 0." },
   { q: "Under the task's model, a stretch starts at a memory read and passes three LUTs. What is its period?",
     opts: ["1,800 ps", "2,300 ps", "2,800 ps", "3,300 ps"],
     a: 2, why: "300 + 1,000 + 3 × 500 = 2,800 ps: the reference's slowest stretch on the small trees." },
-  { q: "How did Gemini 4 Argon reach 1,800 ps on width-4 trees while keeping every memory?",
+  { q: "How did Gemini 4 Argon · Pi reach 1,800 ps on width-4 trees while keeping every memory?",
     opts: ["It used a faster memory", "It decided from registers, during the read, which value is newest, so one LUT follows the memory", "It skipped the correctness checks", "It moved all counters into registers"],
     a: 1, why: "Which value is newest depends on which operations ahead touched the counter, and that is in registers. Moving the counters into registers was Opus's route." },
   { q: "In our MetaOpt network, why does a small A>C demand of 6 enlarge the gap?",

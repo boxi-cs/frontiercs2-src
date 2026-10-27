@@ -41,6 +41,8 @@ def build(lectures):
     ignore = shutil.ignore_patterns(*SKIP)
     shutil.copy2(SITE / "index.html", OUT / "index.html")
     shutil.copytree(SITE / "assets", OUT / "assets", ignore=ignore)
+    if (SITE / "about").exists():
+        shutil.copytree(SITE / "about", OUT / "about", ignore=ignore)
     for lec in lectures:
         src = APPROVED / lec if (APPROVED / lec).exists() else SITE / lec
         if not (src / "index.html").exists():

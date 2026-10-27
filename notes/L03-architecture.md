@@ -17,7 +17,8 @@ output.
 **Sources.** Task pages and results: <https://frontier-cs.org/> (as of October 26, 2026). There is
 no case study for these tasks yet; the agents' methods come from the "Solution" section of each task
 page. The task statements are the public ones an agent reads. RUNLTS's own averages (3.197 and
-140.3) are from its CBP 2025 paper; the 1.39× average speed-up is from the SpGEMM paper's abstract.
+140.3) are from its CBP 2025 paper; the 1.39× average speed-up is from the SpGEMM paper's abstract and belongs to its
+hierarchical clustering, not the fixed eight-row scheme the task uses.
 Nothing here comes from the hidden workloads or the human reference patches.
 
 **Numbers.** Pass counts and scores are from the 16-model leaderboard. The H100 peak (67 FP64
@@ -241,7 +242,7 @@ tables are and how much the vote weighs are all the agent's choice. The whole pr
 
 # RUNLTS: how it is judged, and what the agents did
 
-Each submission runs a cycle-level simulator over the **105 traces** of CBP 2025, in six groups of
+Each submission runs a cycle-aware simulator over the **105 traces** of CBP 2025, in six groups of
 programs (compression, floating point, infrastructure, integer, media, web). Only the second half of
 each trace is measured. The score combines the two means:
 
@@ -298,8 +299,9 @@ for gain in [0.01, 0.02, 0.03, 0.04]:
 4% better on average: 0.997
 ```
 
-A predictor 1% better on average almost surely loses somewhere. It takes about 3% on every trace to
-be fairly safe, and RUNLTS is already the competition's winner.
+A predictor 1% better on average almost surely loses somewhere. It takes about 3% better on average
+to be fairly safe, and RUNLTS is already the competition's winner. Our model checks mispredictions
+only; the wrong-path cycles must also win on every trace, so the real chance is lower.
 
 ## What the agents did
 
@@ -322,16 +324,16 @@ Opus's component, from the task page:
    the corrector's sum, with a trained weight per lookup group.
 
 ::: pitfall
-**Rebuilding the paper is not enough.** The reference is the paper's own component, tuned by the
-team that won the competition. A good reconstruction lands close to it, about 1% worse, and the pass
+**Rebuilding the paper is not enough.** The reference is, by every sign, the paper's own component:
+its storage and the paper's averages match the leaderboard's 31.5. A good reconstruction lands close to it, about 1% worse, and the pass
 rule asks for a clear win on every trace.
 :::
 
 # KAMI: a matrix multiply inside one thread block
 
 A GPU runs threads in **thread blocks**. A block runs on one streaming multiprocessor, and its
-threads come in **warps** of 32. Many workloads need a great number of *small* matrix products, one
-per block: in batched solvers, in small dense blocks of sparse solvers, in some neural networks.
+threads come in **warps** of 32. Many HPC and AI workloads need a great number of *small* matrix
+products, one per block: general, low-rank, batched and sparse multiplication.
 **KAMI** (Wang et al., SC 2025) brings ideas from **communication-avoiding** matrix multiplication,
 first built for clusters of machines, into a single block: the warps split the work so that they
 exchange as little data as possible through shared memory, and they compute on the double-precision
@@ -399,15 +401,16 @@ for m, n, k, _ in SHAPES:
     row = []
     for warps in [1, 2, 4, 8]:
         best = best_layout(m, n, k, warps)
-        row.append(f"{warps} warps: {best[1]}x{best[2]} {best[0]:>6,}" if best else f"{warps} warps: none")
+        label = f"{warps} warp{'s' if warps > 1 else ' '}"
+        row.append(f"{label}: {best[1]}x{best[2]} {best[0]:>6,}" if best else f"{label}: none")
     print(f"{m:3}x{n}x{k}  " + " | ".join(row))
 ```
 
 ```{.text .output}
- 16x16x24  1 warps: 1x1    768 | 2 warps: 1x2  1,152 | 4 warps: none | 8 warps: none
- 32x64x48  1 warps: 1x1  4,608 | 2 warps: 1x2  6,144 | 4 warps: 1x4  9,216 | 8 warps: 2x4 12,288
- 64x64x32  1 warps: 1x1  4,096 | 2 warps: 1x2  6,144 | 4 warps: 2x2  8,192 | 8 warps: 2x4 12,288
-128x64x64  1 warps: 1x1 12,288 | 2 warps: 2x1 16,384 | 4 warps: 2x2 24,576 | 8 warps: 4x2 32,768
+ 16x16x24  1 warp : 1x1    768 | 2 warps: 1x2  1,152 | 4 warps: none | 8 warps: none
+ 32x64x48  1 warp : 1x1  4,608 | 2 warps: 1x2  6,144 | 4 warps: 1x4  9,216 | 8 warps: 2x4 12,288
+ 64x64x32  1 warp : 1x1  4,096 | 2 warps: 1x2  6,144 | 4 warps: 2x2  8,192 | 8 warps: 2x4 12,288
+128x64x64  1 warp : 1x1 12,288 | 2 warps: 2x1 16,384 | 4 warps: 2x2 24,576 | 8 warps: 4x2 32,768
 ```
 
 The 16×16 block has only two fragments, so at most two warps can share it evenly. For 128×64, eight
@@ -512,8 +515,10 @@ costs one read of a row of B.
 *Improving SpGEMM Performance Through Matrix-Reordering and Cluster-wise Computation* (Islam, Xu,
 Dai and Buluç, SC 2025) groups neighboring rows of A into **clusters**. For a cluster, it reads each
 needed row of B once and uses it for every row of the cluster. To make the rows of a cluster share
-columns, it first **reorders** the rows so that similar rows sit together. On 110 matrices, it
-reports a 1.39× average speed-up.
+columns, it first **reorders** the rows so that similar rows sit together. The paper compares 10 row
+orderings and 3 ways of forming clusters on 110 matrices; its best scheme, hierarchical clustering, is
+1.39× faster on average. The task uses the simplest scheme: fixed clusters of eight consecutive rows
+after an RCM reordering.
 
 ## Counting the reads
 
@@ -704,7 +709,10 @@ matrix. Three runs scored 0.
 2. In `data_branch`, make the value ready only one time in two. How many mispredictions does
    `with_register` make? What would you expect, before running it?
 3. Compute the arithmetic intensity of a 256×256×256 block. Is it still bound by memory on an H100?
+   *Solution:* 2 × 256³ = 33,554,432 operations; 8 × (4 × 65,536) = 2,097,152 bytes; 16 operations
+   per byte. The bound is 16 × 3.35 ≈ 53.6 TFLOPS, still below the 67 TFLOPS peak, but close: much
+   larger blocks become compute bound.
 4. In the SpGEMM count, use clusters of 4 and of 16 rows. How do the reads of B change? Why might the
-   paper fix the width at eight?
-5. *Open.* Find a sparse matrix on which clustering eight rows reads *more* entries of the cluster
+   task fix the width at eight?
+5. *Open.* Find a sparse matrix on which clustering eight rows stores *more* values in the cluster
    format than plain rows do. What makes the format wasteful there?

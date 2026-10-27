@@ -86,7 +86,7 @@ function demoPredictor(el) {
     if (log.length > 48) log = log.slice(-48);
     if (last) {
       msg.textContent = pos >= trace.length
-        ? `End of the trace: ${p.misses} misses in ${trace.length} branches.`
+        ? `End of the trace: ${p.misses} ${p.misses === 1 ? "miss" : "misses"} in ${trace.length} branches.`
         : `Branch ${pos}: ${last.taken ? "taken" : "not taken"}${which === "data" ? ` (x = ${last.x}, ${last.ready ? "ready" : "not ready"})` : ""}; predicted from ${last.source}: ${last.miss ? "miss" : "hit"}.`;
     }
     draw();
@@ -354,7 +354,7 @@ function demoSpgemm(el) {
     const one = bRowReads(rows, 1), many = bRowReads(rows, width);
     el.querySelector(".stats").innerHTML = `
       <div class="stat"><small>row by row</small><b>${one} reads</b></div>
-      <div class="stat ${many < one ? "good" : ""}"><small>${width} rows at a time</small><b>${many} reads</b></div>
+      <div class="stat ${many < one ? "good" : ""}"><small>${width === 1 ? "1 row at a time" : `${width} rows at a time`}</small><b>${many} reads</b></div>
       <div class="stat"><small>saved</small><b>${Math.round(100 * (1 - many / one))}%</b></div>`;
     el.querySelector(".sp-note").textContent = "Blue dots: stored entries of A. Each band is one cluster; an amber column is a row of B the cluster reads once.";
   };

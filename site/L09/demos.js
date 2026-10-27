@@ -7,9 +7,9 @@
 const nodeKey = (node) => JSON.stringify(node);
 
 class EGraph {
-  constructor(deferred = true) {
+  constructor() {
     this.parent = []; this.memo = new Map(); this.nodes = new Map(); this.uses = new Map();
-    this.pending = []; this.deferred = deferred; this.work = 0;
+    this.pending = []; this.work = 0;
   }
   find(a) { while (this.parent[a] !== a) a = this.parent[a]; return a; }
   canon(node) { return [node[0], ...node.slice(1).map((c) => this.find(c))]; }
@@ -30,14 +30,14 @@ class EGraph {
     this.parent[b] = a;
     this.nodes.set(a, this.nodes.get(a).concat(this.nodes.get(b))); this.nodes.delete(b);
     this.uses.set(a, this.uses.get(a).concat(this.uses.get(b))); this.uses.delete(b);
-    this.pending.push(a);
-    if (!this.deferred) this.rebuild();
+    this.pending.push(a);   // rebuild() restores the invariants later
     return true;
   }
   classes() { return this.nodes.size; }
   repair(a) {
+    const parents = this.uses.get(a); this.uses.set(a, []);   // take the list: unions below may add to it
     const seen = new Map();   // key -> [node, class]
-    for (const [node0, cls] of this.uses.get(a)) {
+    for (const [node0, cls] of parents) {
       this.work++;
       this.memo.delete(nodeKey(node0));
       const node = this.canon(node0), k = nodeKey(node);
@@ -45,13 +45,14 @@ class EGraph {
       const root = this.find(cls);
       this.memo.set(k, root); seen.set(k, [node, root]);   // like a Python dict: keeps its first position
     }
-    this.uses.set(this.find(a), [...seen.values()]);
+    const r = this.find(a);
+    this.uses.set(r, this.uses.get(r).concat([...seen.values()]));
   }
   rebuild() {
     while (this.pending.length) {
       const todo = [...new Set(this.pending.map((a) => this.find(a)))].sort((x, y) => x - y);
       this.pending = [];
-      todo.forEach((a) => this.repair(a));
+      todo.forEach((a) => { if (this.find(a) === a) this.repair(a); });   // merged earlier this round: its root is queued
     }
     for (const [a, list] of this.nodes) {
       const uniq = new Map(list.map((n) => this.canon(n)).map((n) => [nodeKey(n), n]));
@@ -70,10 +71,10 @@ function cmpNode(x, y) {
 const addTerm = (g, t) => g.add([t[0], ...t.slice(1).map((k) => addTerm(g, k))]);
 
 function batch(n, deferred) {
-  const g = new EGraph(deferred);
+  const g = new EGraph();
   const xs = Array.from({ length: n }, (_, i) => addTerm(g, [`x${i}`]));
   for (let j = 0; j < n; j++) { addTerm(g, [`h${j}`, ["x0"]]); addTerm(g, [`h${j}`, [`x${j}`]]); }
-  xs.slice(1).forEach((x) => g.union(xs[0], x));
+  xs.slice(1).forEach((x) => { g.union(xs[0], x); if (!deferred) g.rebuild(); });   // the old way: rebuild after every union
   g.rebuild();
   return [g.classes(), g.work];
 }

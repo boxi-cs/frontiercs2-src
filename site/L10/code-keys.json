@@ -11,5 +11,6 @@
   "race": "STRATEGIES = {",
   "score": "def task_score(",
   "verdict": "RUNS = {",
-  "memo": "def cfg_memo("
+  "memo": "def cfg_memo(",
+  "solutions": "def program_loop_first("
 }

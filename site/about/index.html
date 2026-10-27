@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — FrontierCS 2 Course</title>
+  <meta name="description" content="How the FrontierCS 2 course is made: who designs it, where its material comes from, how every lecture is checked, and how to contribute.">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/course.css">
+  <style>
+    .about { max-width: 760px; padding: 56px 0 40px; }
+    .about h1 { font-size: clamp(34px, 5vw, 46px); margin: 14px 0 10px; }
+    .about h2 { font-size: 22px; margin: 36px 0 10px; }
+    .about p, .about li { color: var(--ink); }
+    .about .lead { font-size: 18px; color: var(--ink-2); }
+    .about .byline { font-size: 15px; color: var(--ink-2); margin: 0 0 22px; }
+    .about .byline b { color: var(--ink); }
+    .about ol, .about ul { padding-left: 22px; }
+    .about li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html"><span class="brand-mark">FCS</span><span class="brand-text"><b>FrontierCS 2 · Course</b><span>About this course</span></span></a>
+    <span style="flex:1"></span>
+    <a class="btn" style="padding:6px 14px;font-size:13px" href="../index.html">All lectures</a>
+    <button class="iconbtn" id="theme" title="Light / dark">☾</button>
+  </header>
+  <main class="wrap about">
+    <span class="pill">About</span>
+    <h1>How this course is made</h1>
+    <p class="byline">Designed and led by <b>Boxi Yu</b></p>
+    <p class="lead">FrontierCS 2 asks AI agents to do computer-science research: each task removes the key
+      idea of a paper from the authors' own code, and an agent must write it back and beat the original.
+      This course teaches those 48 tasks, one field at a time, so that a student can follow what each
+      paper found and what the agents did.</p>
+
+    <h2>What each lecture covers</h2>
+    <p>For every task in a field, a lecture explains four things, in this order:</p>
+    <ol>
+      <li><b>The idea</b>: what the paper found, built up from a small example you can run.</li>
+      <li><b>What the agent writes</b>: the part the task removed.</li>
+      <li><b>How it is judged</b>: the metrics, the workloads and the pass rule.</li>
+      <li><b>What the agents did</b>: who passed, the best scores, and the ideas behind the best runs.</li>
+    </ol>
+    <p>Lecture 0 explains the benchmark itself: how a task is built, the pass rule, and how the
+      leaderboard is computed.</p>
+
+    <h2>Where the material comes from</h2>
+    <p>Only public sources: the task statements an agent reads, the papers, and the task pages and case
+      studies on <a href="https://frontier-cs.org/" target="_blank" rel="noopener">frontier-cs.org</a>.
+      Nothing comes from a task's hidden workloads, its judge, or the authors' reference code, so the
+      lectures do not give away how to pass a task. Small examples and their numbers are ours, and each
+      lecture says so.</p>
+
+    <h2>How each lecture is checked</h2>
+    <ul>
+      <li><b>Every program runs.</b> Each lecture starts as notes whose Python blocks are run by a checker;
+        every output on the page is what the program really printed.</li>
+      <li><b>Demos match the notes.</b> Each interactive demo repeats a program from the notes and prints
+        the same numbers.</li>
+      <li><b>Results match the source.</b> Pass counts, best scores and reference scores are compared with
+        each task's page. Results change as models are added: every lecture states its date, and this
+        edition uses the leaderboard as of <b>October 26, 2026</b>.</li>
+      <li><b>Independent review.</b> Before release, each lecture is read by a reviewer who did not write
+        it: facts, technical accuracy, demos and clarity.</li>
+      <li><b>Desktop and phone.</b> Every page is checked at laptop and phone widths.</li>
+    </ul>
+
+    <h2>Source and contributions</h2>
+    <p>The source of the course (notes, pages and checking tools) is public at
+      <a href="https://github.com/boxi-cs/frontiercs2-src" target="_blank" rel="noopener">github.com/boxi-cs/frontiercs2-src</a>.
+      Corrections are welcome as an issue or a pull request; its <code>CONTRIBUTING.md</code> explains how
+      to preview and check a lecture.</p>
+
+    <h2>The benchmark</h2>
+    <p>The tasks, results and case studies belong to the FrontierCS 2 benchmark. To run it yourself, see
+      <a href="https://github.com/FrontierCS/FrontierCS-2" target="_blank" rel="noopener">github.com/FrontierCS/FrontierCS-2</a>.</p>
+  </main>
+  <footer></footer>
+  <script src="../assets/course.js"></script>
+  <script>
+    renderFooter("../");
+    const themeBtn = document.getElementById("theme");
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+      const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      themeBtn.textContent = dark ? "☀" : "☾";
+    }
+    try { applyTheme(localStorage.getItem("fcs2-theme")); } catch { applyTheme(null); }
+    themeBtn.onclick = () => {
+      const cur = document.documentElement.dataset.theme;
+      const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const t = dark ? "light" : "dark";
+      applyTheme(t);
+      try { localStorage.setItem("fcs2-theme", t); } catch { /* storage unavailable */ }
+    };
+  </script>
+</body>
+</html>

@@ -42,9 +42,9 @@ After this lecture you will be able to:
 # Yannakakis: semijoins before joins
 
 A database joins tables two at a time. A plan built this way can produce intermediate results far
-larger than the final answer. For acyclic joins, the **Yannakakis algorithm** avoids this. It first
-drops every row that cannot match, using **semijoins** (keep the rows of one table that have a
-partner in another), then joins what is left. The paper (PVLDB 2025) engineers this for a column
+larger than the final answer. For acyclic joins, the **Yannakakis algorithm** avoids this. It first runs a bottom-up pass of **semijoins** (keep the rows of one table that have a
+partner in another), which drops every row with no partner below it in the join tree, then joins
+top-down. The paper (PVLDB 2025) engineers this for a column
 store, so that it never runs much slower than the binary plan and often runs much faster.
 
 ## Rows that cannot match
@@ -98,7 +98,7 @@ cp = join(COMMENTS, POSTS, [0])
 binary = join(cp, USERS, [1])
 print(f"binary plan:    c-p {len(cp)} rows, then result {len(binary)} rows")
 
-p2 = semijoin(POSTS, USERS, [1])            # phase 1: drop rows that cannot match
+p2 = semijoin(POSTS, USERS, [1])            # phase 1: bottom-up semijoins
 c2 = semijoin(COMMENTS, p2, [0])
 two_phase = join(join(c2, p2, [0]), USERS, [1])          # phase 2: join the rest
 print(f"two-phase plan: keeps p {len(p2)}, c {len(c2)}; result {len(two_phase)} rows")
@@ -113,7 +113,9 @@ same result: True
 ```
 
 The binary plan builds 600 rows to keep 60. After the semijoins, no intermediate result is larger
-than the answer.
+than the answer. One bottom-up pass does not remove every row that cannot match: 1 of the 15 kept
+posts has no comment. It does guarantee that every row of the root, here the comments, extends to an
+answer, which keeps the joins small; a second, top-down pass of semijoins would remove the rest.
 
 ## Which trees convert
 
@@ -267,7 +269,7 @@ No model passed; 13 of 16 scored above the human reference (10.2), and one match
 Means over the hidden queries, as of October 26, 2026. Every run fails. The reference is measured
 again in every run, so its row is a median of those measurements.
 
-A score of 12.5 is what a 1.4x speedup on every query would give. Kimi K3.1 Pro
+A score of 12.5 is what a speedup of about 1.4x on every query would give. Kimi K3.1 Pro
 has the best score but not the lowest latency: the score averages per-query gains over the binary
 plan, so a few large gains can lift it. The pass needs something harder: 39 strict wins, query by
 query, against plans that already run fast.
@@ -704,12 +706,15 @@ reference's, recall and last-result ratio no lower, and verified candidates no m
 | Claude Opus 5.5 | 0.995 | 4.38 | 0.956 | 6,070 | 81.8 | pass |
 | GPT-6.1 Sol | 0.995 | 4.44 | 0.956 | 6,160 | 81.7 | pass |
 
-As of October 26, 2026. The top two scores came from stopping much earlier: four times faster, at a
+As of October 26, 2026. The top two scores came from stopping much earlier: three to five times faster, at a
 cost in recall the score allows and the pass rule does not.
 
-**Claude Opus 5.5** kept the fixed budget as an upper limit and added the paper's test. From the k-th
+**Claude Opus 5.5** kept the fixed budget as an upper limit and added a probability test. From the k-th
 score, `c` and the partition's largest length it found the angle; if no angle qualified, the
-partition stopped at once. It read the lookup table's columns lazily and remembered, per angle, the
+partition stopped at once. From the authors' lookup table it took the chance that one table had
+already probed a vector at that angle; with `L` tables, one minus the miss chance to the power `L`
+is the chance that at least one had. It stopped once that reached 90%. This is not the `α₂` rule
+above, which the Query Core task fixes: `α₂` asks that no table still hold the vector unseen. It read the lookup table's columns lazily and remembered, per angle, the
 first column that passes. Its own idea was the settled-partition stop: once k results reach the
 largest inner product a partition allows, neither it nor any partition of shorter vectors can enter
 the answer. It checked this only after 1, 2, 4, 8 and later powers of two probes, to keep it cheap.
@@ -733,7 +738,7 @@ candidates, and answer strictly faster.
 | Gemini 4 Argon · Pi | 7,060 | 0.983 | 6.26 | 0.76 | 52.5 | pass |
 | Kimi K3 | 7,060 | 0.983 | 7.5 | 0.76 | 52.1 | fail |
 
-As of October 26, 2026. Every scored run verified the same 7,060 candidates with the same recall:
+As of October 26, 2026. Every scored run reached the same rounded means (7,060 candidates, recall 0.76):
 with the rule fixed, the task became a race on speed.
 
 **Claude Opus 5.5** produced the early buckets from a small heap over all tables, growing sets of
@@ -924,9 +929,7 @@ As of October 26, 2026.
 count, the average degree and the graph size; sparsification with the vertices and edges, divided by
 powers of the number of colors, with triangle terms for 4-cliques. It fitted the coefficients to its
 own timings of the unmodified engines on generated small-world graphs, one set per pattern and core
-count, and picked the smaller prediction. Its own idea: a graph with more triangles than a random one
-of the same degree has more local neighbor lists, which merge faster, so it added a locality term
-inferred from the triangle count.
+count, and picked the smaller prediction. Its own idea: small-world graphs with fewer random shortcuts have more triangles and more local neighbor lists, which merge faster. It inferred the share of rewired edges from the triangle count, against a regular lattice of the same degree, and added a locality term to both formulas.
 
 # Blockchain execution: Spectrum and Seer
 
@@ -936,8 +939,8 @@ inferred from the triangle count.
 the order consensus fixed. When two conflict, it does not restart the later one; it rolls it back to
 a **checkpoint** taken partway through. A checkpoint saves the code position and the operand stack.
 Copying a deep stack at every checkpoint is slow and uses memory. Our second stack keeps items in
-pages of four: a checkpoint shares the page table, and a page is copied only on its first write after
-a checkpoint.
+pages of four: a checkpoint copies only the page table, a list of pointers that our model does not
+count (Opus delayed even that copy), and a page is copied only on its first write after a checkpoint.
 
 ```python
 class CopyStack:
@@ -969,7 +972,7 @@ class CopyStack:
 
 ```python
 class PagedStack:
-    """Items in pages of four. A checkpoint shares the page table; pages copy on write."""
+    """Items in pages of four. A checkpoint keeps the page table; pages copy on write."""
 
     PAGE = 4
 
@@ -1083,7 +1086,7 @@ memory per checkpoint.
 
 2 of 16 models passed; 9 of 16 scored above the human reference (61.4).
 
-| Run | Create (ns) | Restore (ns) | Transactions/s | Memory per checkpoint | Final score | |
+| Run | Create (ns) | Restore (ns) | Transactions/s | Memory per checkpoint (bytes) | Final score | |
 |---|---:|---:|---:|---:|---:|---|
 | Human reference | 231 | 65 | 42,500 | 13,400 | 61.4 | |
 | Gemini 4 Argon · Antigravity | 37 | 30 | 47,500 | 8,500 | 100.0 | pass |
@@ -1212,17 +1215,17 @@ Waiting for a second block halves the wrong guesses, at the price of more unsure
 
 ## Seer: how it is judged
 
-The predictor is a Go file, `core/vm/predictor.go`, with only `math`, `sort` and `sync` packages
-allowed. The judge replays 600 consecutive blocks of Ethereum mainnet from height 14,650,000, with
+The predictor is a Go file, `core/vm/predictor.go`, with only the
+`math`, `math/bits`, `sort`, `sync` and `sync/atomic` packages allowed. The judge replays 600 consecutive blocks of Ethereum mainnet from height 14,650,000, with
 the authors' snapshot. Transactions using at least 100,000 gas are complex, the rest normal. Each
-block and category reports a transaction-path ratio `T` and a branch accuracy `B`. The score is
+block and category reports a transaction path accuracy (a ratio) `T` and a branch accuracy `B`. The score is
 `Q = 100 (0.8 B + 0.2 T)`, normalized against the always-taken predictor and squared. To pass, in
 each category and each of the three 200-block periods, the summed branch accuracy must rise by at
 least one printed hundredth over the human reference, and the summed path ratio must not fall.
 
 4 of 16 models passed; 14 of 16 scored above the human reference (80.4).
 
-| Run | Branch accuracy | Path accuracy | Final score | |
+| Run | Branch accuracy | Transaction path accuracy | Final score | |
 |---|---:|---:|---:|---|
 | Human reference | 0.954 | 0.873 | 80.4 | |
 | Gemini 4 Argon · Pi | 0.96 | 0.893 | 81.5 | pass |
@@ -1487,8 +1490,14 @@ counted toward peak memory.
    result and the cheapest root change?
 2. In the JoinBoost model, use a learning rate of 1.0. Check the identity, and explain why the SSE now
    drops by exactly `Σ g² / h`.
+   *Hint:* with `lr = 1`, `2 lr − lr² = 1`; each leaf's residuals move to mean zero, which removes
+   the leaf's share of the sum of squares, `g² / h`.
 3. In the FARGO model, use `p_τ = 0.3`. How do recall and work change at `c = 0.8`?
 4. Derive the formula for the number of wedges with `v` at one end from homomorphisms, and say which
    maps the `− deg(v)` removes.
+   *Solution:* a homomorphism of the path `o–a–b` with `o ↦ v` picks a neighbor `u` of `v`, then any
+   neighbor of `u`: `Σ deg(u)`. It is one-to-one unless `b ↦ v`, once per neighbor `u`: `deg(v)`
+   maps. An end's orbit has two vertices and the wedge has two symmetries, so the count equals the
+   number of one-to-one maps.
 5. In the Spectrum model, use pages of 16 items. What happens to the items copied on write and the
    items kept, and why?

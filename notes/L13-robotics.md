@@ -5,7 +5,8 @@ subtitle: "FrontierCS 2 — Lecture Notes"
 
 FrontierCS 2 has two Robotics tasks: **Diffusion Policy**, the loop that samples a robot's next moves
 by removing noise step by step (RSS 2023); and **MuJoCo Playground**, a training recipe that teaches
-a four-legged robot to follow joystick commands in twelve minutes of GPU time (RSS 2025). For each,
+a four-legged robot to follow joystick commands in minutes of GPU time (RSS 2025); the task gives a
+procedure twelve minutes to beat it. For each,
 these notes explain the paper's idea, the part the task asks for, how a run is judged, and what the
 agents did.
 
@@ -99,13 +100,14 @@ The regression answer, 0.112, steers almost straight into the obstacle. No demon
 Diffusion training adds noise to demonstrated actions at many levels `t`, from 0 (clean) to 100
 (pure noise). At level `t` a clean action `a` becomes `x = sqrt(ab) · a + sqrt(1 − ab) · noise`,
 where `ab` (alpha-bar) falls from 1 to 0 along a **schedule**; Diffusion Policy uses the cosine
-schedule below. The network learns to guess the clean action from `x` and `t`.
+schedule below. The network learns to guess the noise that was added; subtracting it gives a guess of the clean
+action. Our toy computes that clean guess directly.
 
 We skip the training and use the best possible guess, which for our two-mode data can be written in
 closed form: the expected clean action given `x`. A trained network approximates this function.
 
 ```python
-T = 100   # noise levels, as in the paper's training
+T = 100   # noise levels on our 0-100 scale (100 = pure noise)
 
 
 def alpha_bar(t):
@@ -162,6 +164,7 @@ def ddpm(levels, rng):
 
 
 def tally(samples):
+    """Within 0.3 of a mode counts as left or right; anything else is a miss."""
     left = len([a for a in samples if abs(a + 1) < 0.3])
     right = len([a for a in samples if abs(a - 1) < 0.3])
     return {"left": left, "right": right, "middle": len(samples) - left - right}
@@ -227,7 +230,7 @@ obstacle. Ten calls are already about as good as a hundred.
 
 With few calls, placement matters. Evenly spaced levels waste calls at the top of the cosine
 schedule, where almost no signal is left, and stop at level 20, where the last guess is still
-blurred. A **second-order** update (DPM-Solver++) also reuses the previous guess: it measures the
+blurred. (With five calls, placement alone gains nothing in our toy; see below.) A **second-order** update (DPM-Solver++) also reuses the previous guess: it measures the
 jump in log signal-to-noise ratio `lam` and extrapolates from the last two guesses, at no extra
 network call.
 
@@ -272,8 +275,8 @@ placed, first order  [95, 70, 45, 22, 5]    {'left': 498, 'right': 448, 'middle'
 placed, second order [95, 70, 45, 22, 5]    {'left': 517, 'right': 460, 'middle': 23}
 ```
 
-Three well-placed calls beat three even ones by a wide margin, and the second-order step halves the
-misses of five calls. The levels 95, 70, 45, 22 and 5 are the ones Claude Opus 5.5 chose (see below).
+Three well-placed calls beat three even ones by a wide margin. With five first-order calls, placement
+alone gains nothing here (54 misses against 53); the second-order step is what halves the misses. The levels 95, 70, 45, 22 and 5 are the ones Claude Opus 5.5 chose (see below).
 In our toy, "middle" is a miss; in the task, a blurred plan pushes the T-block less accurately.
 
 ## What the agent writes
@@ -283,11 +286,15 @@ normalization, the observation window and the controller around the loop stay fi
 decides how many denoising steps to take (at least 1 and at most 200 network calls per prediction),
 where to place them and how each step updates the sample. The loop must keep one contract: the
 entries of the plan fixed by the observations (selected by `condition_mask`) must come back
-unchanged, and every entry must be finite. The statement's own example:
+unchanged, and every entry must be finite. Our check of both rules, on the statement's own example:
 
 ```python
+from math import isfinite
+
+
 def respects_mask(data, mask, result):
-    return all(r == d for d, m, r in zip(data, mask, result) if m) and all(r == r for r in result)
+    kept = all(r == d for d, m, r in zip(data, mask, result) if m)
+    return kept and all(isfinite(r) for r in result)
 
 
 print(respects_mask([1.0, 2.0, 3.0], [True, False, True], [1.0, 0.5, 3.0]),
@@ -298,7 +305,7 @@ print(respects_mask([1.0, 2.0, 3.0], [True, False, True], [1.0, 0.5, 3.0]),
 True False
 ```
 
-(`r == r` is false only for NaN.) Fixing the seed, looking up answers for known starting states or
+Fixing the seed, looking up answers for known starting states or
 inspecting the environment is forbidden; the sampler runs in a separate process that can only ask
 for network evaluations and fresh random numbers.
 
@@ -313,7 +320,7 @@ episodes and the same diffusion seeds, three repetitions per condition, on 2 CPU
 To **pass**, on every group of episodes the sampler must match or beat the authors' 100-step sampler
 on mean best reward and on success rate, and be strictly faster both per prediction and for the
 whole run. The **score** is separate. It compares each workload with a "naive" anchor, a plain
-20-step DDPM sampler measured on the same machine (`Qn`, `Ln`, `Tn` below): quality gained over the
+20-step DDPM sampler measured on the same machine (`qn`, `ln`, `tn` below): quality gained over the
 anchor, times the worse of two speed ratios.
 
 ```python
@@ -357,8 +364,9 @@ however good it is. Both speed ratios must improve for the score to rise.
 | Kimi K3.1 Pro | 13.4 | 0.333 | 0.966 | 120 | 55.2 (fail) |
 | Step 5 Preview | 14.2 | 0.417 | 0.966 | 132 | 54.1 (fail) |
 
-No model passed, and all sixteen scored above the human reference (14.0). Every run was much faster
-than the 100-step loop; what failed the pass rule was success or reward in some group of episodes.
+No model passed, and all sixteen scored above the human reference (14.0). Every run was faster on
+average than the 100-step loop (most by 4× or more on the whole workload); for most runs, the means
+show success or reward below the reference.
 Step 5 Preview had the highest success rate of these, 0.417, and still failed. GLM 5.3 had the best
 final score, 59.8.
 
@@ -372,8 +380,8 @@ about 12 ms per network call for both samplers (our division).
 
 ::: pitfall
 **Fast is not enough.** The pass rule asks for reward and success at least as high in every group,
-and success is a coin with few tosses per group. A five-call sampler that is 19 times faster can
-still lose one group by one episode.
+and success is a coin with few tosses per group. A sampler 19 times faster could lose a group by a
+single episode. Claude Opus 5.5's success rate, 0.167 against 0.25, was lower overall.
 :::
 
 # MuJoCo Playground: a walker that follows a joystick
@@ -441,7 +449,7 @@ stand still: reward 14.19, speed tracking 466, turn tracking 486
 hand-made  : reward 26.33, speed tracking 954, turn tracking 727
 ```
 
-A perfect walker would earn 1.5 × 0.02 × 1,000 = 30 in our toy. Standing still earns 14.19, since
+A walker that tracks perfectly at no cost would earn 1.5 × 0.02 × 1,000 = 30 in our toy. Standing still earns 14.19, since
 commands near zero are partly met by doing nothing. The hand-made policy ignores the weak leg and
 the errors, and turns poorly.
 
@@ -615,13 +623,13 @@ values, so the final policy settles instead of being a snapshot of noisy updates
 to use the deadline: it trained in short compiled chunks, timed each one, stopped when the next would
 not finish a safety margin before the deadline, and skipped evaluation rollouts. In its own
 estimate, that gave about 360 million environment steps instead of 200 million. It earned more
-reward and tracked better, but its action-rate penalty (5.06 × 10⁻³) was higher than the
-reference's (4.96 × 10⁻³): as in our walker, better tracking came with a penalty that got worse.
+reward and tracked better, but its action-rate penalty (5.06 × 10⁻³) was worse than the reference's (4.96 × 10⁻³) on the task
+page. GPT-6 Astra tied the reference at 4.96, and a tie is not strictly better. In both, as in our walker, better tracking came with a penalty that did not improve.
 
 ::: pitfall
-**Noise decides close races.** Across training seeds, the reference's flat-ground reward varies by
-about 0.2 to 0.3, and the same seed does not reproduce exactly on a GPU. With three development
-submissions, each one a single noisy sample, an agent cannot tell a gain of 0.5 from luck.
+**Noise decides close races.** Across training seeds, the reference's flat-ground reward has a standard deviation of about 0.2 to 0.3, and the same seed does not reproduce exactly on a GPU. With three development
+submissions, each one a single noisy sample, an agent cannot reliably tell a gain of 0.5 from luck (our estimate), and development feedback covers
+only flat ground and pushes, never rough terrain.
 :::
 
 # Summary and self-check
@@ -632,15 +640,17 @@ submissions, each one a single noisy sample, an agent cannot tell a gain of 0.5 
 1. *Average the right thing.* Regression averages two good actions into a bad one; a denoising
    sampler keeps both, because each step commits a little more.
 2. *Calls are the cost.* A sampler's time is its number of network calls. Five well-placed calls with
-   a second-order step do the work of a hundred.
-3. *Every metric, every workload.* In both tasks, every run improved the score, and none passed:
-   one group of episodes, or one penalty, was enough to fail.
+   a second-order step come close to a hundred, about 19 times faster, but "close" is exactly what the
+   pass rule punishes.
+3. *Every metric, every workload.* In Diffusion Policy all 16 runs beat the reference's score, and in
+   MuJoCo Playground ten did; none passed in either: one group of episodes, or one penalty, was
+   enough to fail.
 :::
 
 ## Exercises
 
-1. Change the demonstrations to 70% left and 30% right. What is the regression answer now, and how
-   does the 100-call sampler split?
+1. Change the demonstrations to 70% left and 30% right. What is the regression answer now, and how does the 100-call sampler split? (Also give `denoise` the mode weights 0.7 and 0.3: multiply
+   each `weight` by its share.)
 2. Run `ddim` with one call at level 50 instead of 100 (`levels = [50]`). What do the samples look
    like, and why?
 3. Find three levels for `dpm2` that leave fewer than 30 of 1,000 samples in the middle.

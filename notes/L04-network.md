@@ -72,6 +72,9 @@ True
 The first candidate is much faster on average, but its latency on the second workload is one unit
 worse, so it fails. The second improves everything by a little, and it passes.
 
+This toy is strict on every metric. Some tasks allow a tie on a metric: in BBQ the worst latency may
+equal the reference's, and in MetaOpt an equal gap passes. Each task page states its own rule.
+
 The agent also gets **train calls**: it can submit a version and see its score and how many public
 workloads it beats. The hidden workloads are not the public ones. In BBQ they include a bitmap width
 that train feedback never shows.
@@ -180,6 +183,11 @@ The task keeps the circuit around the queue and removes the logic of its tree le
 a Python program that writes the circuit (SystemVerilog), and the agent writes it back. Each level
 must serve enqueue, dequeue-min and dequeue-max, even when operations arrive back to back.
 
+The judge simulates every design on nine operation traces at five tree sizes. Every response must
+match a correct queue. Then it measures two speeds on each workload: **operations per second**, and
+the **latency** of the slowest operation. To pass, throughput must beat the reference and the worst
+latency must be no longer, on every workload.
+
 # BBQ: the clock, and two faster designs
 
 A circuit works in ticks of a clock. Between ticks, values wait in **registers**. In each tick,
@@ -188,7 +196,8 @@ next tick. The **clock period** is the time of the slowest such stretch.
 
 The task times every design with a fixed model. Synthesis cuts the logic into **lookup tables**
 (LUTs), the basic gate of an FPGA. Each LUT on a stretch costs 500 ps, every period carries a fixed
-300 ps, and a stretch that starts at a memory read costs 1,000 ps more.
+300 ps, a stretch that starts at a memory read costs 1,000 ps more, and one that starts at a FIFO
+status flag costs 500 ps more.
 
 ```python
 START = {"register": 0, "fifo flag": 500, "memory": 1000}
@@ -236,7 +245,7 @@ smallest trees. On the two largest, the search for the first 1 is slower still: 
 
 ## Two ways to remove the wait
 
-**Gemini 4 Argon** kept every memory. It noticed that *which* value is newest does not depend on the
+**Gemini 4 Argon · Pi** (the case study calls it Gemini 4 Argon) kept every memory. It noticed that *which* value is newest does not depend on the
 value; it depends on which operations ahead touched the same counter, and registers already hold
 that. So it computes the choice from registers while the read is in flight. When the counter lands,
 one LUT picks it or a newer value: `period_ps(1, "memory")`, the floor.
@@ -245,7 +254,7 @@ one LUT picks it or a newer value: `period_ps(1, "memory")`, the floor.
 flag for "count is 1". Registers can be read at any moment, so a level needs one stage, not three.
 An operation leaves the level before the next one enters it, so there is no newer value to look for.
 
-| Tree | Reference (ps) | Gemini 4 Argon (ps) | Claude Opus 5.5 (ps) |
+| Tree | Reference (ps) | Gemini 4 Argon · Pi (ps) | Claude Opus 5.5 (ps) |
 |---|---|---|---|
 | 2 levels, width 4 | 2,800 | 1,800 | 1,800 |
 | 2 levels, width 8 | 2,800 | 2,300 | 1,800 |
@@ -347,7 +356,8 @@ print(simplex_max([1, 1], [[1, 0], [0, 1], [1, 1]], [4, 3, 5]))
 
 ## A four-site network
 
-Our network has four sites, five links and five pairs. Each pair has two paths, shortest first.
+Our network has four sites, five links and five pairs. Each pair has two paths, shortest first. POP
+uses two groups here; the task uses three.
 
 ```python
 CAP = {"AB": 12, "BC": 12, "AD": 12, "CD": 12, "BD": 6}
@@ -443,7 +453,7 @@ for g, nonzero, levels in sorted(results, key=lambda r: (-r[0], r[1]))[:3]:
   {'A>C': 6, 'A>B': 18, 'B>C': 18, 'A>D': 6, 'D>C': 0} gap 12
 ```
 
-The task has 27 pairs, at most nine of them nonzero, and only 256 calls to the exact checker per
+In our network no pinned load can overload a link, so all 243 matrices are valid. The task has 27 pairs, at most nine of them nonzero, and only 256 calls to the exact checker per
 instance. There are far too many matrices to try them all:
 
 ```python
@@ -457,7 +467,7 @@ print(f"{sum(comb(27, k) * 2 ** k for k in range(10)):,} matrices")
 ```
 
 The human reference solves one large mixed-integer program, MetaOpt's own method. Claude Opus 5.5
-(final score 52.0, a pass) wrote its own small simplex solver to score candidates privately, then ran
+(final score 52.0, a pass; three other runs tied at 52.0 and passed too) wrote its own small simplex solver to score candidates privately, then ran
 a local search with four threads. Its own idea was to seed the search from **cuts**: small sets of
 links that every path of the big demands must cross, crowded with small pinned demands, just like
 the A–B–C links above. Eleven of sixteen models scored above the reference; four passed every
@@ -470,13 +480,14 @@ A shared cluster runs many machine-learning training jobs. Each round (120 secon
 they train, and with it their speed. **Shockwave** (NSDI 2023) plans for these changes ahead, to
 finish jobs fast while treating each one fairly.
 
-The task judges a schedule on four counts, and a pass must beat the reference on all four, on both
-hidden traces:
+The task judges a schedule on two hidden traces of eight jobs each, on four counts, and a pass must
+beat the reference strictly on all four, on both traces:
 
 - **makespan**: when the last job finishes;
 - **average JCT**: the mean job completion time (finish minus arrival);
 - **worst ρ**: a job's finish-time fairness ρ is its JCT divided by the time it would take with a
-  fair share of the cluster; the worst ρ is the largest;
+  fair share of the cluster (its time alone times `max(1, jobs / GPUs)`, so 2 for eight jobs on four
+  GPUs); the worst ρ is the largest;
 - **unfair jobs**: the share of jobs with ρ above 1.05.
 
 ## A small cluster
@@ -550,19 +561,30 @@ Fairest  {'makespan': 2400, 'avg JCT': 1557, 'worst rho': 1.33, 'unfair': 6}
 ```
 
 Each policy wins somewhere and loses somewhere. FIFO and Fairest finish the trace first. SRTF has
-the shortest average JCT and the fewest unfair jobs. Fairest has the best worst ρ, but it pushes
-every job just over 1.05. Beating a reference on all four at once is much harder than on any one.
+the shortest average JCT and the fewest unfair jobs. Fairest has the best worst ρ, but every one of
+its six jobs ends above 1.05. Beating a reference on all four at once is much harder than on any one.
 
 ::: pitfall
 **Three out of four is a fail.** On the real task, Claude Opus 5.5 had the best fairness of all
 sixteen runs (12.5% unfair jobs, worst ρ 1.18, against 62.5% and 1.51 for the reference) and a
 shorter average JCT. But its mean makespan was 16,700 s, against 16,100 s for the reference, so it
-failed. Its final score, 47.1, is above most runs that passed.
+failed. Its final score, 47.1, is third of sixteen: level with Gemini 4 Argon · Antigravity, which
+passed, and above GPT-6.1 Terra, which passed with 46.5.
 :::
 
 Opus kept its own copy of every job's state, copied the simulator's batch-size rules to forecast
 how long each job still needs, and searched over job orders for the one with the best combined
-score. Four models passed; all sixteen scored above the reference.
+score. That score gave the two fairness terms three times their base weight. Four models passed; all
+sixteen scored above the reference.
+
+| Run | Average JCT (s) | Makespan (s) | Unfair jobs | Worst ρ | Pass |
+|---|---|---|---|---|---|
+| Human reference | 8,970 | 16,100 | 62.5% | 1.51 | |
+| Gemini 4 Argon · Pi | 7,690 | 15,300 | 18.8% | 1.24 | yes |
+| GPT-6 Astra | 7,700 | 15,500 | 18.8% | 1.24 | yes |
+| Claude Opus 5.5 | 7,660 | 16,700 | 12.5% | 1.18 | no |
+
+Selected rows; means over the two hidden traces, as of October 26, 2026. The full table is on the task page.
 
 # Summary and self-check
 

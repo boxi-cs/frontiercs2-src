@@ -23,7 +23,7 @@ const LECTURE = {
   whySub: "Three lessons the Programming Languages tasks teach",
   why: [
     ["One data structure, three tasks", "Egg maintains the <b>e-graph</b>, BABBLE mines it for functions, and Glenside attaches shapes to it. Union-find, the memo and congruence cover all three."],
-    ["Every workload, every metric", "In Egg, <b>thirteen runs</b> beat the reference's score and <b>none passed</b>. In BABBLE and Polygon, the best score was not a pass."],
+    ["Every workload, every metric", "In Egg, <b>thirteen runs</b> beat the reference's score and <b>none passed</b>. In BABBLE the best score failed, and in Polygon the fastest run failed."],
     ["Write less, not faster", "In Glenside, the passing runs added <b>fewer than 50 nodes</b> instead of 55,200: a direct rewrite beat a big search."],
   ],
   ctaTitle: "Ready to merge two e-classes?",
@@ -63,7 +63,7 @@ const CHAPTERS = [
     slug: "2-rebuild", nav: "Egg", title: "Egg: Rebuild Once per Batch",
     subtitle: "Deferred rebuilding, the task, and why nobody passed",
     abstract: "egg queues merged classes during a batch of rewrites and repairs them once. The task removes rebuilding; a pass must be 5% faster than the reference on every test, in total time and in congruence time. Thirteen runs beat the reference's score; none passed.",
-    tags: ["deferred rebuilding", "worklist", "geometric mean", "FDI 89.2"],
+    tags: ["deferred rebuilding", "worklist", "geometric mean", "3rd hardest of 48"],
     hero: "batch", heroCaption: "Repair after every union, or once per batch",
     sections: [
       { id: "work", title: "Counting the work", html: `
@@ -71,11 +71,11 @@ const CHAPTERS = [
         <p>Our workload: a class <code>x0</code> sits under <code>n</code> different operators <code>h0(x0)</code>, <code>h1(x0)</code>, …, and each <code>xj</code> sits under <code>hj</code>. One batch of rewrites merges <code>x1</code>, …, <code>x(n-1)</code> into <code>x0</code>. Each merge makes <code>hj(x0)</code> and <code>hj(xj)</code> congruent. We count parent entries repaired, our measure of work.</p>
         ${code("batch")}
         ${demo("batch", "Demo 2 · Immediate or deferred", "move the slider")}
-        <p>Both ways end with the same e-graph: one class for all the <code>x</code>s and one per operator. Repairing after every union visits the growing parent list of <code>x0</code> each time, about <code>n²</code> entries. Deferring visits it once, about <code>2n</code>. The paper finds that rebuilding gives asymptotic speedups in practice; our numbers only show the shape of the saving.</p>
+        <p>Both ways end with the same e-graph: one class for all the <code>x</code>s and one per operator. Repairing after every union visits the parent list of <code>x0</code> each time: repair dedupes it back to <code>n</code> entries, so each of the <code>n − 1</code> unions visits <code>n + 1</code> and the total is <code>n² − 1</code>. Deferring visits the merged list once, <code>2n − 1</code> entries. The paper finds that rebuilding gives asymptotic speedups in practice; our numbers only show the shape of the saving.</p>
         ${callout("pitfall", "DEFERRING HAS A PRICE", "<p>Between rebuilds, the memo can hold stale nodes and two classes can be equal without knowing it. Anything that searches the e-graph must wait for a rebuild. egg rebuilds once per iteration of equality saturation, after all matches are applied.</p>")}` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task gives the agent egg's source with three methods removed: <code>process_unions</code>, which works through the pending merges and analysis updates; <code>rebuild_classes</code>, which puts every class's nodes in canonical form and removes duplicates; and <code>rebuild</code>, which runs both until no work is left. After <code>rebuild</code>, every id must be canonical, congruent nodes must share a class, the memo must agree, <b>analysis data</b> (facts attached to each class, such as a constant's value) must have flowed up to the parents, explanations must stay valid, and extraction must find the cheapest form.</p>
-        <p>The workloads are tests from egg's arithmetic suite: three public ones (e-matching, differentiation with explanations, and associativity of addition) and three hidden ones of the same family. Each is run many times. To pass, on every test the agent's code must be at least 5% faster than the human reference in <b>two</b> measures: total wall-clock time, and congruence-maintenance time (the time spent applying matches and rebuilding). The score uses only the agent's own times: with <code>G</code> the geometric mean of its wall-clock times, <code>score = 100 × S / (S + G)</code> with <code>S = 20 ms</code>.</p>
+        <p>The workloads are tests from egg's arithmetic suite: three public ones (e-matching, differentiation with explanations, and associativity of addition) and three hidden ones of the same family. Each is run many times. To pass, on every test the agent's code must be at least 5% faster than the human reference in <b>two</b> measures: total wall-clock time, and congruence-maintenance time (the time spent applying matches and rebuilding). The score uses only the agent's own times: with <code>G</code> the geometric mean of its per-test median wall-clock times, <code>score = 100 × S / (S + G)</code> with <code>S = 20 ms</code>. Below, "mean time" means that geometric mean: the tests range from about 5 ms to about 390 ms, so it sits far below the plain average in the results table.</p>
         ${code("eggscore")}` },
       { id: "agents", title: "What the agents did", html: `
         <p>No model passed. Thirteen of sixteen scored above the human reference, yet none was 5% faster on both measures on all six tests.</p>
@@ -84,9 +84,10 @@ const CHAPTERS = [
         <tr><td>Kimi K3.1 Pro</td><td>3.25 (won 4 of 6)</td><td>77.6 (won 2 of 6)</td><td>62.3</td><td>${fail}</td></tr>
         <tr><td>GPT-6.1 Terra</td><td>3.21 (won 3 of 6)</td><td>80.8 (won 3 of 6)</td><td>61.8</td><td>${fail}</td></tr>
         <tr><td>Gemini 4 Argon · Pi</td><td>2.78 (won 6 of 6)</td><td>74.2 (won 4 of 6)</td><td>61.7</td><td>${fail}</td></tr>
+        <tr><td>Gemini 4 Argon · Antigravity</td><td>2.84 (won 6 of 6)</td><td>77.2 (won 4 of 6)</td><td>61.6</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>3.98 (won 0 of 6)</td><td>99.6 (won 0 of 6)</td><td>52.8</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the six hidden tests, ${AS_OF}. "Won" counts the tests on which the run beat the reference. <a href="${TASK}egg" target="_blank" rel="noopener">Full table ↗</a></p>
-        <p>Gemini 4 Argon · Pi came closest: it beat the reference on congruence time in all six tests and on wall-clock time in four. The task page describes the run of <b>Claude Opus 5.5</b>, which did not pass. It repairs pending parents as our <code>repair</code> does, then propagates analysis data: when a class's data changes, its parents go back on the queue. Both loops repeat until neither has work. Finally it visits every class once, sorts its nodes and removes duplicates, and rebuilds the index from each operator to the classes that contain it, which pattern matching uses.</p>
+        <p class="meta">Selected rows; means over the six graded tests (three public, three hidden), ${AS_OF}. "Won" counts the tests on which the run beat the reference. <a href="${TASK}egg" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p>Gemini 4 Argon · Pi and Gemini 4 Argon · Antigravity came closest: each beat the reference on congruence time in all six tests and on wall-clock time in four. The task page describes the run of <b>Claude Opus 5.5</b>, which did not pass. It finds congruences through collisions in one global memo rather than a per-class <code>seen</code> map, then propagates analysis data: when a class's data changes, its parents go back on the queue. Both loops repeat until neither has work. Finally it visits every class once, sorts its nodes and removes duplicates, and rebuilds the index from each operator to the classes that contain it, which pattern matching uses.</p>
         ${callout("pitfall", "AN AVERAGE IS NOT A PASS", "<p>A run that is faster on average can still be slower on one test, or fast in total but slow in rebuilding. The pass rule asks for every test and both measures.</p>")}` },
     ],
     takeaways: ["Queue merges; rebuild once per batch.", "Pass: 5% faster on every test, two measures.", "0 of 16 passed; 13 beat the reference's score."],
@@ -112,7 +113,7 @@ const CHAPTERS = [
         ${predict("The polygon pattern <code>(repeat ?x (seq (move 10) (turn ?y)))</code> is bigger than <code>(seq (move ?x) (turn ?y))</code>. Why does it save less?", "<p>It matches only the first two programs. The smaller pattern, one side of a polygon, matches all four.</p>")}
         ${code("best")}
         ${demo("au", "Demo 3 · Anti-unify, then learn a function", "pick two programs")}
-        <p>BABBLE does more than this. It repeats the search for a second round, keeps a beam of 64 partial libraries, and, with domain <b>equations</b> such as the commutativity of addition, runs equality saturation first, so a class holds several forms of a fragment. Anti-unifying two classes then gives a <em>set</em> of patterns, one for each pair of forms. The paper computes these sets across the whole e-graph by crossing its <b>tree automaton</b> (the e-graph seen as rules <code>op(classes) → class</code>) with itself.</p>` },
+        <p>BABBLE does more than this. It repeats the search for a second round, keeps a beam of 64 partial libraries, and, for the corpora that have domain <b>equations</b> (lists and physics) such as the commutativity of addition, runs equality saturation first, so a class holds several forms of a fragment. Anti-unifying two classes then gives a <em>set</em> of patterns, built from the pairs of forms of each child. The paper computes these sets across the whole e-graph by crossing its <b>tree automaton</b> (the e-graph seen as rules <code>op(classes) → class</code>) with itself.</p>` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task removes the candidate step: the body of <code>LearnedLibrary::new</code>, which turns the saturated e-graph into candidate patterns, and of <code>Dfta::cross_over</code>, which crosses the automaton with itself. Candidates must keep the meaning of what they replace, respect the hole limit of two, and the search must end on cyclic e-graphs. Everything after it (deduplication, choosing the library, extraction, measuring) is fixed.</p>
         <p>The development suite has five corpora, one per domain: lists, physics, text, logo drawings and block towers. The graded suite has ten others, two per domain. Each corpus is run three times. To pass, on every corpus the compression must be at least the human reference's, and the median run time must be strictly lower. The score is the mean percentage reduction, <code>100 × (1 − 1/r)</code> for a compression ratio <code>r</code>, so a ratio of 1.25 scores 20.</p>` },
@@ -124,7 +125,7 @@ const CHAPTERS = [
         <tr><td>GPT-6.1 Terra</td><td>1.28 (9 of 10)</td><td>162 (9 of 10)</td><td>19.0</td><td>${fail}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>1.28 (10 of 10)</td><td>257 (10 of 10)</td><td>18.9</td><td>${pass}</td></tr>
         <tr><td>GLM 5.3</td><td>1.27 (8 of 10)</td><td>74.2 (10 of 10)</td><td>18.3</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the ten graded corpora, ${AS_OF}. In brackets: the corpora on which the run met the reference. <a href="${TASK}babble" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; means over the ten graded corpora, ${AS_OF}. In brackets: the corpora on which the run met the reference. <a href="${TASK}babble" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>Claude Opus 5.5 crossed every rule of the automaton with every rule of the same arity. A depth-first search then computed the patterns common to each pair of e-classes <b>once per pair</b>, as our <code>anti_unify</code> would with a memo. It kept all patterns in one table that stores each distinct subpattern once, skipped pairs of classes that can never occur in one program, named holes in order of first appearance and dropped repeats. On cyclic e-graphs, where many candidates match exactly the same places, it kept only the smallest candidate of each group, as the later deduplication would.</p>
         ${callout("pitfall", "THE BEST SCORE DID NOT PASS", "<p>DeepSeek V4.1 Flash had the best final score, 19.4, but its compression fell below the reference's on three of the ten corpora.</p>")}` },
     ],
@@ -154,7 +155,7 @@ const CHAPTERS = [
         ${code("split")}` },
       { id: "judged", title: "What the agent writes, and how it is judged", html: `
         <p>The task removes Polygon's search, end to end: the body of <code>Environment.check</code>, which parses and encodes the two queries, searches, and decodes the solver's model into a database; the parallel disambiguation path; and the conflict-driven bodies behind them. The parser, encoders, SMT interface and the MariaDB check stay. A refutation counts only if MariaDB runs both queries on the decoded database and sees different results.</p>
-        <p>Each suite has 16 wrong LeetCode answers (four each at row bounds 2, 3, 4 and 5, with a 2-second budget), three splitting tasks of 50 or 100 queries, and two hard pairs from the paper with 20-second budgets. To pass, on each of the 19 ordinary workloads it must refute wherever the reference does and take at most <code>max(0.03 s, 20%)</code> longer; on the two hard pairs it must be more than twice as fast. The score counts refutations first, then total time in steps of 0.5:</p>
+        <p>Each suite has 16 wrong LeetCode answers (four each at row bounds 2, 3, 4 and 5, with a 2-second budget), three splitting tasks of 50 or 100 queries, and two paper-scale hard pairs with 20-second budgets. To pass, on each of the 19 ordinary workloads it must refute wherever the reference does and take at most <code>max(0.03 s, 20%)</code> longer; on the two hard pairs it must be more than twice as fast and must also refute wherever the reference does. The score counts refutations first, then total time in steps of 0.5:</p>
         ${code("pscore")}
         <p>With every workload refuted, the score lies between 95 and 100. A missed refutation costs 5 points, more than any speedup can win back. By the formula, the reference's 95.6 means about 10 time units, and 98.0 about 2.5: our arithmetic, not a published figure.</p>` },
       { id: "agents", title: "What the agents did", html: `
@@ -167,7 +168,7 @@ const CHAPTERS = [
         <tr><td>DeepSeek V4.1 Flash 1017</td><td>1 (21 of 21)</td><td>314 (21 of 21)</td><td>97.7</td><td>${pass}</td></tr>
         <tr><td>Claude Opus 5.5</td><td>1 (21 of 21)</td><td>831 (10 of 21)</td><td>95.5</td><td>${fail}</td></tr>
         <tr><td>GPT-6.1 Sol</td><td>0.952 (20 of 21)</td><td>242 (21 of 21)</td><td>93.0</td><td>${fail}</td></tr></table>
-        <p class="meta">Shares and means over the 21 graded workloads, ${AS_OF}. In brackets: the workloads on which the run met the reference's bar. <a href="${TASK}polygon" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; shares and means over the 21 graded workloads, ${AS_OF}. In brackets: the workloads on which the run met the reference's bar. <a href="${TASK}polygon" target="_blank" rel="noopener">Full table ↗</a></p>
         <p>The task page describes the run of <b>Claude Opus 5.5</b>. It grows the row bound from one row per table up to the limit, each bound a fresh, smaller formula, as our <code>search</code> does. Within a bound, each table starts with few live rows, given to the Z3 solver as assumptions; on failure, the unsat core names the tables whose sizes took part, and only those grow by one row. Preferences such as dates inside the database's range stay until a conflict blames them. Several schedules run in parallel, each with its own Z3, and the first model found stops the rest. It refuted all 21 workloads but was too slow on 11 of them.</p>
         ${callout("pitfall", "FAST IS NOT ENOUGH", "<p>GPT-6.1 Sol was faster than every passing run, at 242 ms, but missed one refutation, and its score fell to 93.0.</p>")}` },
     ],
@@ -207,7 +208,7 @@ const CHAPTERS = [
         <tr><td>GPT-6 Astra</td><td>17.4</td><td>1</td><td>113</td><td>91.0</td><td>${pass}</td></tr>
         <tr><td>GLM 5.3 Flash</td><td>41</td><td>1</td><td>468</td><td>90.1</td><td>${pass}</td></tr>
         <tr><td>Muse Spark 1.3</td><td>55,200</td><td>1</td><td>167,000</td><td>82.9</td><td>${fail}</td></tr></table>
-        <p class="meta">Means over the 14 graded workloads, ${AS_OF}. <a href="${TASK}glenside" target="_blank" rel="noopener">Full table ↗</a></p>
+        <p class="meta">Selected rows; means over the 14 graded workloads, ${AS_OF}. <a href="${TASK}glenside" target="_blank" rel="noopener">Full table ↗</a></p>
         <p><b>Claude Opus 5.5</b> built a fact for every operator, marked accelerator nodes and let every parent inherit the mark, and merged facts as our <code>merge</code> does. Its own idea was in the rewrites. A dot product of a Cartesian product is rebuilt over flattened operands, so the accelerator rule sees a plain matrix product at once. A concatenation of two such dot products becomes one dot product of block operands, padded with zeros so that the extra products add nothing. Each rule skips classes it has already rewritten, which keeps the e-graph small.</p>
         ${callout("pitfall", "EQUAL IS NOT BETTER", "<p>Muse Spark 1.3 grew the e-graph exactly as much as the reference, but was slower on 4 of the 14 workloads, so it failed.</p>")}` },
     ],
@@ -257,11 +258,11 @@ const QUIZ = [
     opts: ["The memo stores sums only once", "Congruence: same operator, and their children are now in the same classes", "Addition is commutative", "Union-find merges every parent"],
     a: 1, why: "Equal children under the same operator give equal parents. Rebuilding finds such pairs and merges them." },
   { q: "What does egg's deferred rebuilding save?",
-    opts: ["Memory for the memo", "Repairing the same parents again after every union in a batch", "Pattern matching time", "Extraction time"],
-    a: 1, why: "It queues merged classes and repairs each once per batch. In our workload: about 2n entries instead of n²." },
+    opts: ["Memory for the memo", "Pattern matching time", "Extraction time", "Repairing the same parents again after every union in a batch"],
+    a: 3, why: "It queues merged classes and repairs each once per batch. In our workload: 2n − 1 entries instead of n² − 1." },
   { q: "Anti-unify <code>(move 10)</code> and <code>(move 5)</code>.",
-    opts: ["<code>?x</code>", "<code>(move ?x)</code>", "<code>(move 10)</code>", "They cannot be anti-unified"],
-    a: 1, why: "Same operator, so the pattern keeps <code>move</code>; the differing arguments become a hole." },
+    opts: ["<code>(move ?x)</code>", "<code>?x</code>", "<code>(move 10)</code>", "They cannot be anti-unified"],
+    a: 0, why: "Same operator, so the pattern keeps <code>move</code>; the differing arguments become a hole." },
   { q: "In the visits example, what does every counterexample we found contain?",
     opts: ["A NULL: a customer with no id, or a transaction with no amount", "Two customers", "More than two rows per table", "A transaction for a missing visit"],
     a: 0, why: "Both bugs need a NULL: COUNT(column) skips NULL, and a NULL amount keeps a visit in the join. Without NULLs, the queries agree on every database we tried." },

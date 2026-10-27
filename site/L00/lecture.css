@@ -28,3 +28,6 @@ table.fit tr > th:first-child { text-align: left; white-space: nowrap; }
 .run.no { background: var(--paper-2); }
 .run.cut { opacity: 0.55; border-style: dashed; }
 .scale { margin: 0 48px; } .scale .dot { font-size: 10px; }
+/* The fit table can be wider than a phone in the chapter's hero card: let it scroll in its own box. */
+.fit-grid { max-width: 100%; overflow-x: auto; }
+@media (max-width: 600px) { table.fit th small { font-size: 9px; } .fit-cell { min-width: 34px; } }

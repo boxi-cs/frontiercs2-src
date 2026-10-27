@@ -183,8 +183,9 @@ aaaaaaaa  (a+)+: 128 ways   a+: 1 way
 
 A string of `n` letters can be cut in 2^(n−1) ways. The pattern is **ambiguous**: one string has
 many parses. Ambiguity under a repeat is the root of exponential ReDoS. Common shapes are a repeat
-inside a repeat, `(a+)+`; a repeated choice whose branches overlap, `(a|aa)+`; and two neighbouring
-repeats that can eat the same letters, `a*a*`.
+inside a repeat, `(a+)+`, and a repeated choice that can split one string in several ways,
+`(a|aa)+`. Two neighbouring repeats that can eat the same letters, `a*a*`, cause a slower,
+polynomial blow-up; under another repeat, as in `(a*a*)*`, they become exponential too.
 
 ## Repairs that keep the language
 
@@ -261,7 +262,8 @@ the regex and the parts RegexScalpel localized in its first step. The task remov
 that renders one localized part as text, `subpattern_to_string`, and leaves the two prompt
 templates for the agent to rewrite. The model must answer with one complete regex in a code block.
 
-Here is our version of that function. When it knows a rewrite of the part, it checks the rewrite
+Here is our version of that function. It only ever sees parts already found vulnerable. When it
+knows a rewrite of the part, it checks the rewrite
 with `differ` and `attacked` and offers it as a ready replacement. Otherwise it names the shape of
 the problem and leaves the rewrite to the model.
 
@@ -288,7 +290,7 @@ def render(part):
             if differ(part, fix) is None and attacked(fix) is None:
                 return f"`{part}` -> replace with `{fix}`"
         if inner[0] == "alt":
-            return f"`{part}` (a repeated choice whose branches overlap: merge them)"
+            return f"`{part}` (a repeated choice that splits strings in several ways: merge or drop branches)"
     return f"`{part}` (rewrite it so each string has one parse)"
 
 
@@ -299,7 +301,7 @@ for part in ["(a+)+", "(a*)+", "(a|b|ab)+", "(a+b?)+"]:
 ```{.text .output}
 `(a+)+` -> replace with `a+`
 `(a*)+` -> replace with `a*`
-`(a|b|ab)+` (a repeated choice whose branches overlap: merge them)
+`(a|b|ab)+` (a repeated choice that splits strings in several ways: merge or drop branches)
 `(a+b?)+` (rewrite it so each string has one parse)
 ```
 
@@ -390,31 +392,37 @@ recall).
 
 ## What the agents did
 
-No model passed. Twelve of sixteen scored above the human reference, which scored 9.7.
+No model passed. Twelve of sixteen scored above the human reference, which scored 9.7. With an
+FDI of 82.8, LRR is the 9th hardest of the 48 tasks (Lecture 0 explains FDI).
 
 | Run | Repair rate | No longer vulnerable | Jaccard | Length increase | Final score |
 |---|---|---|---|---|---|
+| Human reference | — | — | — | — | 9.7 |
 | DeepSeek V4.1 Flash 1017 | 0.76 | 0.82 | 0.848 | 0.532 | 74.0 |
 | GPT-6.1 Terra | 0.4 | 0.42 | 0.914 | 0.0574 | 39.0 |
 | GPT-6.1 Sol | 0.43 | 0.48 | 0.755 | 0.0564 | 32.5 |
 | Claude Opus 5.5 | 0.38 | 0.46 | 0.775 | 0.0143 | 29.0 |
 
+Means over the hidden workloads, as of October 26, 2026; the task page does not show the
+reference's metrics.
+
 DeepSeek V4.1 Flash 1017 repaired three regexes in four, almost twice the next run, but its regexes
 grew by half on average and kept less of the original text (normalized Levenshtein similarity
-0.591, the lowest of the table). GPT-6.1 Terra stayed closest to the original language and text, but
+0.591, the lowest of all sixteen runs). GPT-6.1 Terra stayed closest to the original language and text, but
 repaired only 40%.
 
 The task page shows **Claude Opus 5.5**'s patch. Like our `render`, it parses each localized part
 and, when it knows a rewrite that keeps the language, writes "replace with" and the rewrite.
 Its prompt gives the model rules with examples for each shape: a repeat inside a repeat, a repeated
 choice with overlapping branches, a repeated sequence with an optional separator, and neighbouring
-repeats over the same letters. It also tells the model to add `^` at the start, which never
-changes which whole strings match and stops the matcher from retrying at every position.
+repeats over the same letters. It also tells the model to add `^` at the start; the prompt argues
+that this never changes which whole strings match and stops the matcher from retrying at every
+start position.
 
 ::: pitfall
-**Eight counts on every workload.** A higher repair rate usually means bigger rewrites, and the
-pass rule also asks for less growth and more unchanged text than the reference. The best final
-score, 74.0, came with the largest growth of any run that repaired most regexes.
+**Eight counts on every workload.** Repairing more and changing less pull against each other, and
+the pass rule asks for both. The best final score, 74.0, came with the largest growth of any run
+(0.532; the next is 0.16) and the lowest text similarity (0.591).
 :::
 
 # Progent: privilege control for agents
@@ -496,7 +504,7 @@ blocked  send_money: recipient XX99 6666 6666 6666 is not allowed
 
 A policy written from the request alone is safe here, but too strict: the landlord's IBAN appears
 only in the file, so the payment the user asked for is blocked too. The policy must learn from the
-tool results, without learning from the attacker. Four ways to try:
+tool results, without learning from the attacker. Four more ways to try:
 
 ```python
 class NoDefense(Policy):
@@ -604,6 +612,9 @@ may ask the same model for help through one function, `api_request`. It runs in 
 network, files, processes or threads, within 768 MiB and 20 CPU seconds per episode, and each
 episode is capped at 650,000 model tokens and 120 policy model calls.
 
+The task page's summary also mentions the ASB benchmark and a narrowing check. The statement the
+agent reads judges the four AgentDojo suites only, and these notes follow it.
+
 ## How it is judged
 
 A workload is one AgentDojo suite: banking, slack, travel or workspace. Each user task runs once
@@ -617,8 +628,9 @@ times each. A suite passes when
 (b) mean utility under attack of the candidate >= the same mean of the reference
 ```
 
-and the submission passes only if all four suites pass. Without a defense, about 40% to 65% of
-attacked episodes end with the injection succeeding; the reference cuts that to a few percent, and
+and the submission passes only if all four suites pass. Without a defense, between about 23% and
+65% of attacked episodes end with the injection succeeding, depending on the suite (the task
+statement's pilot); the reference cuts that to a few percent, and
 it fails rule (a) on every suite in every measured repetition. How hard is zero? Here is the
 chance that a policy with a small, steady breach rate gets through all final episodes without one:
 
@@ -649,7 +661,8 @@ smaller suites, so a policy only as good as the reference passes it about half t
 
 ## What the agents did
 
-One of sixteen models passed. Thirteen scored above the human reference.
+One of sixteen models passed. Thirteen scored above the human reference. With an FDI of 52.6,
+Progent is the 27th hardest of the 48 tasks.
 
 | Run | Attack success rate (%) | Utility under attack (%) | Final score | |
 |---|---|---|---|---|
@@ -660,6 +673,9 @@ One of sixteen models passed. Thirteen scored above the human reference.
 | Claude Opus 5.5 | 1.39 | 56.2 | 55.4 | fail |
 | GLM 5.3 Flash | 0 | 48.7 | 48.7 | fail |
 | GPT-6.1 Terra | 0 | 26.8 | 26.8 | fail |
+
+Means over the hidden workloads, as of October 26, 2026. The reference is measured again in every
+run, so its row is the median.
 
 **Gemini 4 Argon · Antigravity** passed with no breach and higher utility than the reference.
 **Gemini 4 Argon · Pi** had the best final score, 56.9, but a few injections got through, so it
