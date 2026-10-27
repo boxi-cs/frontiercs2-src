@@ -1,0 +1,14 @@
+{
+  "demos": "MODES, SPREAD = ",
+  "denoise": "def denoise(",
+  "ddpm": "def ddpm(",
+  "ddim": "def ddim(",
+  "dpm2": "def dpm2(",
+  "mask": "def respects_mask(",
+  "dpscore": "def utility(",
+  "walker": "def episode(theta",
+  "train": "def train(",
+  "pgscore": "def playground_score(",
+  "deadline": "def steps_by_deadline(",
+  "compare": "def compare("
+}

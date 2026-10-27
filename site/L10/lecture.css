@@ -1,0 +1,45 @@
+/* L10 demos: input cells, path list, branch grid, coverage curves, session view. */
+.cc-inputs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
+.cc-inputs label { display: grid; gap: 2px; text-align: center; }
+.cc-inputs small { font: 500 10px var(--mono); color: var(--stone); }
+.cc-inputs input { width: 100%; min-width: 0; box-sizing: border-box; padding: 4px 2px; text-align: center; font: 13px var(--mono);
+  border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+
+.cc-path { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; counter-reset: cond -1; }
+.cc-path li { counter-increment: cond; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px;
+  align-items: center; padding: 5px 8px; border-radius: 6px; background: var(--paper-2); border-left: 3px solid var(--teal); }
+.cc-path li.f { border-left-color: var(--stone); }
+.cc-path li::before { content: counter(cond); grid-row: 1 / 3; font: 500 11px var(--mono); color: var(--stone); }
+.cc-path li .mono { font-size: 13px; overflow-wrap: anywhere; }
+.cc-path li small { grid-column: 2; font-size: 11px; color: var(--stone); }
+.cc-path li .cbtn { grid-column: 3; grid-row: 1 / 3; padding: 3px 10px; font-size: 12px; }
+
+.cc-cov, .ss-cov { margin-top: 12px; }
+.cc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; }
+.cc-cond { display: grid; grid-template-columns: 18px minmax(0, 1fr) 22px 22px; gap: 4px; align-items: center; padding: 4px 6px;
+  border: 1px solid var(--line); border-radius: 6px; font-size: 11px; }
+.cc-cond small { font: 500 10px var(--mono); color: var(--stone); }
+.cc-cond .cc-text { font-family: var(--mono); overflow-wrap: anywhere; }
+.cc-cond i { font: 600 11px var(--mono); font-style: normal; text-align: center; padding: 2px 0; border-radius: 4px;
+  background: var(--paper-2); color: var(--stone); }
+.cc-cond i.on { background: var(--teal); color: var(--paper); }
+.cc-cond i.new { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+.rc-box { margin-top: 8px; }
+.rc-box svg { display: block; width: 100%; height: auto; }
+.rc-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.rc-legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.demo .stats .stat small + b + small { text-transform: none; letter-spacing: 0; margin-top: 2px; }
+
+.ss-run { margin-top: 12px; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font-size: 12px; overflow-wrap: anywhere; }
+.ss-run span { color: var(--stone); }
+
+.map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 600px) {
+  .map { grid-template-columns: minmax(0, 1fr); }
+  .cc-inputs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .cc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-cond { grid-template-columns: 14px minmax(0, 1fr) 20px 20px; padding: 3px 4px; font-size: 10px; }
+  .controls .seedl input[type="range"] { width: 90px; }
+}

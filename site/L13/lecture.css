@@ -1,0 +1,20 @@
+/* L13 demos: denoising paths, action histogram, walker curves, strict comparison table. */
+.dp-flow svg, [data-demo="steps"] .hist svg, .wk-curve svg, .wk-trace svg { display: block; width: 100%; height: auto; }
+.dp-hist { margin-top: 10px; }
+.dp-hist:empty { display: none; }
+.dp-hist svg { display: block; width: 100%; height: auto; }
+.dp-presets { margin-top: 0; }
+[data-demo="steps"] input.lv { width: 260px; max-width: 100%; }
+.wk-curve, .wk-trace { margin-bottom: 8px; }
+.tablewrap { overflow-x: auto; }
+table.strict { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.strict th, table.strict td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+table.strict th:first-child, table.strict td:first-child { text-align: left; }
+table.strict td.win { color: var(--green); background: var(--green-soft); font-family: var(--mono); }
+table.strict td.loss { color: var(--red); background: var(--red-soft); font-family: var(--mono); }
+table.strict tr.sum td { font-weight: 600; border-bottom: 0; }
+[data-demo="steps"] .msg:empty { display: none; }
+@media (max-width: 600px) {
+  table.strict { font-size: 11px; }
+  table.strict th, table.strict td { padding: 4px 3px; }
+}

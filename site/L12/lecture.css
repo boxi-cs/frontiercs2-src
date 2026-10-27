@@ -1,0 +1,32 @@
+/* L12 demos: step chart, prompt line, policy episode, narrowing form, odds bars. */
+.redos-pick .cbtn code, .demo .controls .cbtn code { font-size: 12px; background: none; padding: 0; color: inherit; }
+.redos-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--stone); margin: 4px 0 0; }
+.redos-in { font-size: 14px !important; overflow-wrap: anywhere; }
+.demo input[type="text"] { font: 13px var(--mono); padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); width: 160px; }
+.prompt-line { margin: 10px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font-size: 13px; overflow-wrap: anywhere; }
+.prompt-line:empty { display: none; }
+.prompt-line small { color: var(--stone); }
+.pol-file, .pol-log { margin-top: 10px; font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+.pol-file small, .pol-log small { display: block; font: 500 11px var(--sans); color: var(--stone); margin-bottom: 3px; }
+.pol-file > div { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); white-space: pre-wrap; }
+.pol-file .inj { background: var(--red-soft); color: var(--red); border-radius: 3px; }
+.pol-log > div { padding: 4px 10px; border-radius: 6px; margin-bottom: 4px; white-space: pre-wrap; }
+.pol-log > div.ok { background: var(--green-soft); color: var(--green); }
+.pol-log > div.no { background: var(--paper-2); color: var(--stone); text-decoration: line-through; text-decoration-color: var(--red); }
+.narrow { display: grid; gap: 6px; font-size: 13px; }
+.narrow label { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.narrow label.sub { margin-left: 22px; }
+.narrow label.sub2 { margin-left: 44px; font-family: var(--mono); font-size: 12px; }
+.narrow input:disabled + * , .narrow label:has(input:disabled) { opacity: 0.5; }
+.odds { display: grid; gap: 6px; margin-top: 10px; }
+.odds-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 56px; align-items: center; gap: 10px; font-size: 13px; }
+.odds-row small { color: var(--stone); font-size: 11px; }
+.odds-row b { font: 600 13px var(--mono); text-align: right; }
+.odds-bar { height: 12px; border-radius: 6px; background: var(--paper-2); overflow: hidden; }
+.odds-bar i { display: block; height: 100%; background: var(--teal); }
+@media (max-width: 600px) {
+  .odds-row { grid-template-columns: 96px minmax(0, 1fr) 48px; gap: 6px; }
+  .odds-row small { display: block; }
+  .narrow label.sub { margin-left: 12px; }
+  .narrow label.sub2 { margin-left: 24px; }
+}

@@ -1,0 +1,12 @@
+{
+  "parse": "def parse(text):",
+  "matches": "def matches(tree, s,",
+  "ways": "def ways(text, s):",
+  "attacked": "def attacked(text,",
+  "render": "def render(part):",
+  "score": "def q_score(",
+  "policy": "class Policy:",
+  "policies": "class NoDefense(Policy):",
+  "narrows": "def narrows(old, new):",
+  "odds": "SUITES = {"
+}

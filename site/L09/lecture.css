@@ -1,0 +1,47 @@
+/* L09 demos: e-graph classes, rebuild work bars, anti-unification, SQL counterexample, im2col. */
+.eg-classes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.eg-class { display: flex; flex-direction: column; gap: 3px; min-width: 64px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); transition: border-color 0.2s, background 0.2s; }
+.eg-class small { font: 600 11px var(--mono); color: var(--stone); }
+.eg-class.hot { border-color: var(--amber); background: var(--mark); }
+.eg-class.merged { border-color: var(--green); background: var(--green-soft); }
+.eg-node { font: 600 13px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.bars { display: grid; gap: 8px; margin: 6px 0 10px; }
+.eg-bar { display: grid; grid-template-columns: 180px minmax(0, 1fr) 64px; align-items: center; gap: 8px; font-size: 13px; }
+.eg-bar i { display: block; height: 16px; border-radius: 3px; }
+.eg-bar i.imm { background: var(--amber); }
+.eg-bar i.def { background: var(--teal); }
+.eg-bar b { text-align: right; font-size: 13px; }
+.au-pick { display: grid; gap: 6px; margin-bottom: 8px; }
+.au-pick label { display: flex; gap: 8px; align-items: center; font-size: 13px; min-width: 0; }
+.au-pick select { min-width: 0; flex: 1; font: 12px var(--mono); padding: 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.au-out { padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font-size: 13px; overflow-wrap: anywhere; }
+.au-out small { font-family: var(--sans); color: var(--stone); }
+.hole { color: var(--amber); }
+.au-table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 6px; }
+.au-table th, .au-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; overflow-wrap: anywhere; }
+.au-table th:first-child, .au-table td:first-child { width: 1%; white-space: nowrap; overflow-wrap: normal; }
+.au-table tr.best td { background: var(--teal-soft); color: var(--teal); font-weight: 600; }
+.au-rw { display: grid; gap: 3px; margin-top: 8px; font-size: 13px; }
+.au-rw > div { overflow-wrap: anywhere; }
+.pg-db { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 10px; }
+.pg-t small { display: block; font: 600 11px var(--mono); color: var(--stone); margin-bottom: 3px; }
+.pg-t table { border-collapse: collapse; font: 13px var(--mono); }
+.pg-t th, .pg-t td { padding: 4px 8px; border: 1px solid var(--line); text-align: center; }
+.pg-t th { font: 600 11px var(--sans); color: var(--ink-2); background: var(--paper-2); }
+.pg-t .null { color: var(--amber); font-weight: 600; }
+.pg-t .empty { color: var(--stone); font-family: var(--sans); }
+.ic { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 16px; align-items: start; margin: 6px 0 10px; }
+.ic small { display: block; font-size: 11px; color: var(--stone); margin-bottom: 4px; }
+.ic-grid { display: grid; gap: 3px; max-width: 220px; }
+.ic-grid span { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--line); background: var(--card); font: 600 12px var(--mono); color: var(--ink-2); }
+.ic-grid span.on { background: var(--teal-soft); border-color: var(--teal); color: var(--teal); }
+.ic-rows { display: grid; gap: 3px; max-height: 260px; overflow-y: auto; }
+.ic-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); font-size: 12px; color: var(--ink-2); cursor: pointer; text-align: left; }
+.ic-row.on { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); }
+@media (max-width: 600px) {
+  .ic { grid-template-columns: minmax(0, 1fr); }
+  .ic-grid { max-width: 170px; }
+  .eg-bar { grid-template-columns: minmax(0, 1fr) 56px; }
+  .eg-bar span { grid-column: 1 / -1; }
+}
+.hero-demo .eg-classes { gap: 6px; }

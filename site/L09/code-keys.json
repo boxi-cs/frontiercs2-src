@@ -1,0 +1,19 @@
+{
+  "egraph": "class EGraph:",
+  "repair": "def repair(self, a):",
+  "congruence": "g.union(b, c)",
+  "batch": "def batch(n, deferred):",
+  "eggscore": "def egg_score(",
+  "parse": "def parse(text):",
+  "au": "def anti_unify(",
+  "cands": "ranked = sorted(candidates",
+  "best": "best = ranked[0]",
+  "sql": "def answer(visits, trans):",
+  "search": "def search(bound",
+  "split": "thresholds = [29",
+  "pscore": "def polygon_score(",
+  "make": "def make(op, kids",
+  "im2col": "def im2col(",
+  "merge": "def merge(to, other):",
+  "gscore": "def glenside_score("
+}

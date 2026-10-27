@@ -1,0 +1,17 @@
+{
+  "table": "def edit_table(",
+  "traceback": "def traceback(",
+  "modes": "def last_row(",
+  "dna": "def random_dna(",
+  "myers": "def myers(",
+  "trace": "myers(\"ACGT\", \"ACCT\", trace=True)",
+  "band": "def banded(",
+  "doubling": "d, total = doubling(",
+  "memory": "def traceback_bytes(",
+  "middle": "q, t = \"ACGT\", \"ACCT\"",
+  "hirschberg": "def hirschberg(",
+  "pathcost": "def path_cost(",
+  "timing": "def measured(",
+  "score": "def score_term(",
+  "diagonal": "def diagonal("
+}

@@ -1,0 +1,19 @@
+{
+  "kvhead": "def make_head(seed):",
+  "kvfit": "def fit_bias(",
+  "kvscore": "def article_score(",
+  "ragen": "def parse_reply(",
+  "ragenscore": "def ragen_score(",
+  "sde": "def sde_step(",
+  "signal": "def signal(sigma",
+  "ocr": "def ocr_reward(",
+  "queue": "def train(window",
+  "fdscore": "TABLE = {",
+  "jepa": "def make_world(",
+  "schedule": "def schedule(",
+  "average": "def psnr(",
+  "detok": "def corrupt(",
+  "dyt": "def layer_norm(",
+  "dytscore": "def dyt_score(",
+  "polar": "def best_cubic("
+}

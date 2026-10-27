@@ -84,17 +84,16 @@ Videos (animind visuals, Boxi's ElevenLabs voice) come after v1.0, starting with
 | L03 | Architecture | published |
 | L04 | Network | published |
 | L05 | Theory | published |
-| L06 | Bioinformatics | in progress (Boxi) |
-| L07 | Machine Learning | in progress (Boxi) |
-| L08 | Database | in progress (Boxi) |
-| L09 | Programming Languages | in progress (Boxi) |
-| L10 | Software Engineering | in progress (Boxi) |
+| L06 | Bioinformatics | published |
+| L07 | Machine Learning | published |
+| L08 | Database | published |
+| L09 | Programming Languages | published |
+| L10 | Software Engineering | published |
 | L11 | Cryptography | published |
-| L12 | Security | in progress (Boxi) |
-| L13 | Robotics | in progress (Boxi) |
+| L12 | Security | published |
+| L13 | Robotics | published |
 
-Every lecture now has a first draft in progress. To help, ask Boxi for a fix or a later lecture's
-review, then open an issue (see CONTRIBUTING.md).
+All 14 lectures are published. Fixes are welcome: open an issue or a pull request (see CONTRIBUTING.md).
 
 ### Log
 
@@ -106,3 +105,5 @@ review, then open an issue (see CONTRIBUTING.md).
   sessions never edit shared files; LECTURE_BRIEF.md for the remaining lectures.
 - 2026-10-27: L01 MLSys, L02 HPC, L03 Architecture and L05 Theory published, written by four
   parallel sessions from LECTURE_BRIEF.md and re-checked before release.
+- 2026-10-27: L06, L07, L08, L09, L10, L12 and L13 published: all 14 lectures are live. Every
+  task's pass count, best score and reference score was compared with its task page.

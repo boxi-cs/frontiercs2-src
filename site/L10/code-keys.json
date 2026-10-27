@@ -1,0 +1,15 @@
+{
+  "tracer": "class Trace:",
+  "solve": "def solve(x, path, k)",
+  "walk": "deep = {6:",
+  "paths": "def all_paths(",
+  "tester": "class Tester:",
+  "dfs": "def bounded_dfs(",
+  "randbranch": "def random_branch(",
+  "cfg": "SUCC = {2:",
+  "cfgsearch": "def cfg_directed(",
+  "race": "STRATEGIES = {",
+  "score": "def task_score(",
+  "verdict": "RUNS = {",
+  "memo": "def cfg_memo("
+}
