@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L09-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const AS_OF = "as of October 26, 2026";
@@ -28,7 +31,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to merge two e-classes?",
   minutes: "About 75 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L09-1.mp4": "Part 1 of 4 · Egg: rebuild once per batch · 4 min · narrated by Boxi Yu",
+    "media/L09-2.mp4": "Part 2 of 4 · BABBLE: learning a library · 3 min · narrated by Boxi Yu",
+    "media/L09-3.mp4": "Part 3 of 4 · Polygon: two queries that disagree · 3 min · narrated by Boxi Yu",
+    "media/L09-4.mp4": "Part 4 of 4 · Glenside: shapes through rewrites · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -39,6 +48,7 @@ const CHAPTERS = [
     tags: ["equality saturation", "e-class", "union-find", "congruence"],
     hero: "code:repair", heroCaption: "Repairing a merged class's parents",
     sections: [
+      video(1, "Egg: rebuild once per batch", "Part 1 of 4 of this lecture's video: egg: rebuild once per batch."),
       { id: "idea", title: "Equality saturation", html: `
         <p>A compiler that optimizes by rewriting has a problem: which rewrite to apply first? Rewriting <code>a * 2</code> to <code>a &lt;&lt; 1</code> inside <code>(a * 2) / 2</code> can block the rewrite that simplifies it to <code>a</code>. <b>Equality saturation</b> avoids the choice. It keeps every form it finds, applies all rewrites until nothing new appears (or a limit is hit), and only then <b>extracts</b> the cheapest form. The forms live in an <b>e-graph</b>, which shares them compactly. <em>egg: Fast and Extensible Equality Saturation</em> (POPL 2021) is the Rust library behind much recent work, including BABBLE and Glenside.</p>` },
       { id: "parts", title: "Three parts", html: `
@@ -99,6 +109,7 @@ const CHAPTERS = [
     tags: ["library learning", "anti-unification", "compression", "tree automaton"],
     hero: "code:au", heroCaption: "Anti-unifying two e-classes",
     sections: [
+      video(2, "BABBLE: learning a library", "Part 2 of 4 of this lecture's video: bABBLE: learning a library."),
       { id: "idea", title: "Library learning", html: `
         <p>People who write many related programs factor out functions. <b>Library learning</b> does this automatically: given a corpus of programs, find functions whose use makes the corpus smallest. <em>babble: Learning Better Abstractions with E-Graphs and Anti-unification</em> (POPL 2023) finds candidate functions by <b>anti-unification</b> and keeps the corpus in an e-graph, so that equivalent forms of each fragment are considered too.</p>` },
       { id: "au", title: "Anti-unification", html: `
@@ -138,6 +149,7 @@ const CHAPTERS = [
     tags: ["SQL equivalence", "counterexample", "NULL", "SMT", "under-approximation"],
     hero: "polygon", heroCaption: "Search small databases for one on which the queries differ.",
     sections: [
+      video(3, "Polygon: two queries that disagree", "Part 3 of 4 of this lecture's video: polygon: two queries that disagree."),
       { id: "idea", title: "Refuting equivalence", html: `
         <p>A student's SQL answer passes the test cases, but is it right? Two queries are <b>equivalent</b> if they return the same result on every database. Proving that is hard; refuting it needs only one <b>counterexample</b>: a database on which they differ. <em>Polygon: Symbolic Reasoning for SQL using Conflict-Driven Under-Approximation Search</em> (PLDI 2025) finds small ones. It encodes both queries as formulas over tables of a few symbolic rows, and asks an SMT solver for values that make the results differ.</p>` },
       { id: "pair", title: "A wrong answer that passed", html: `
@@ -181,6 +193,7 @@ const CHAPTERS = [
     tags: ["access pattern", "e-class analysis", "im2col", "systolic array"],
     hero: "im2col", heroCaption: "Each window becomes one row of a matrix.",
     sections: [
+      video(4, "Glenside: shapes through rewrites", "Part 4 of 4 of this lecture's video: glenside: shapes through rewrites."),
       { id: "idea", title: "Convolutions on matrix hardware", html: `
         <p>Matrix accelerators, such as a <b>systolic array</b> of multiply-and-add units, run matrix products. A neural network's <b>convolution</b> is not one, but it can be rewritten as one, a trick called <b>im2col</b>. <em>Pure Tensor Program Rewriting via Access Patterns</em> (MAPS 2021) introduces Glenside, a language in which such rewrites are pure and local, so that an e-graph can explore them and a fixed rule can spot forms the accelerator runs.</p>` },
       { id: "access", title: "Access patterns", html: `
