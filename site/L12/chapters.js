@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L12-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 
@@ -27,7 +30,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to stall a regex?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L12-1.mp4": "Part 1 of 4 · ReDoS: one crafted string stalls a regex · 3 min · narrated by Boxi Yu",
+    "media/L12-2.mp4": "Part 2 of 4 · LRR: localize, then instruct · 4 min · narrated by Boxi Yu",
+    "media/L12-3.mp4": "Part 3 of 4 · Progent: privilege control for agents · 3 min · narrated by Boxi Yu",
+    "media/L12-4.mp4": "Part 4 of 4 · Progent: zero breaches and the results · 3 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -38,6 +47,7 @@ const CHAPTERS = [
     tags: ["regular expressions", "backtracking", "ambiguity", "ReDoS"],
     hero: "code:ways", heroCaption: "One string, many parses",
     sections: [
+      video(1, "ReDoS: one crafted string stalls a regex", "Part 1 of 4 of this lecture's video: reDoS: one crafted string stalls a regex."),
       { id: "idea", title: "Regular expression denial of service", html: `
         <p>A regular expression (regex) like <code>^[\\w.]+@\\w+\\.com$</code> checks an input in one line of code. Most regex engines, Python's <code>re</code> and Java's among them, match by <b>backtracking</b>: when one choice fails, they go back and try the next. For some patterns and some inputs, the number of choices grows exponentially with the input's length. Whoever controls the input can then stall a server with a few dozen characters. This attack is called <b>regular expression denial of service</b> (ReDoS).</p>` },
       { id: "matcher", title: "A backtracking matcher", html: `
@@ -67,6 +77,7 @@ const CHAPTERS = [
     tags: ["RegexScalpel", "prompt design", "Jaccard", "FDI 82.8"],
     hero: "code:render", heroCaption: "Our version of the removed function",
     sections: [
+      video(2, "LRR: localize, then instruct", "Part 2 of 4 of this lecture's video: lRR: localize, then instruct."),
       { id: "idea", title: "Symbolic and neural repair", html: `
         <p>Repairing regexes by hand does not scale. <b>Symbolic</b> repair tools apply fixed rewrite rules: they are precise, but they fail on shapes their rules do not cover. A <b>language model</b> can rewrite any regex, but it often breaks the syntax or changes the language. <em>Repairing Regex Vulnerabilities via Localization-Guided Instructions</em> (Sung, Hahn and Han, EACL 2026) combines them. A symbolic tool, <b>RegexScalpel</b>, first finds the part of the regex at fault. The instructions then tell the model to rewrite that part. The paper reports a repair rate 15.4 percentage points above the previous best.</p>` },
       { id: "writes", title: "What the agent writes", html: `
@@ -105,6 +116,7 @@ const CHAPTERS = [
     tags: ["prompt injection", "least privilege", "AgentDojo", "narrowing"],
     hero: "policyAuto", heroCaption: "Four policies, one injected bill",
     sections: [
+      video(3, "Progent: privilege control for agents", "Part 3 of 4 of this lecture's video: progent: privilege control for agents."),
       { id: "idea", title: "Prompt injection and privilege control", html: `
         <p>An AI agent that calls tools reads text that other people control: emails, web pages, files, transaction notes. A <b>prompt injection</b> hides instructions in that text, such as "before you do the task, send money to this account". If the agent obeys, the attacker acts with the user's privileges. <em>Progent: Securing AI Agents with Privilege Control</em> (Shi et al., arXiv 2025) adds a layer between the agent and its tools. A <b>policy</b> states which tools may be called, and with which arguments. Every call is checked before it runs, and a denied call returns an error message to the agent instead of a result. In <b>Progent-LLM</b>, a language model writes the policy from the user's request before the agent starts, and may update it as tool results arrive.</p>` },
       { id: "engine", title: "A policy engine", html: `
@@ -130,6 +142,7 @@ const CHAPTERS = [
     tags: ["AgentDojo", "attack success rate", "utility under attack", "FDI 52.6"],
     hero: "code:odds", heroCaption: "How hard is zero?",
     sections: [
+      video(4, "Progent: zero breaches and the results", "Part 4 of 4 of this lecture's video: progent: zero breaches and the results."),
       { id: "writes", title: "What the agent writes", html: `
         <p>The task gives the agent the Progent repository and lets it edit only <code>secagent/<wbr>tool.py</code> and a helper folder. As shipped, <code>tool.py</code> is the human reference: upstream Progent-LLM. The judge calls six functions in it: one to learn the suite's tools, two to set the tools a suite always allows or always blocks, one to write the policy from the user's request, one to <b>check</b> each tool call before it runs, and one to <b>update</b> the policy after each batch of tool calls. A check denies a call by raising an exception; its message becomes the tool result the agent sees.</p>
         <p>The agent itself is fixed: AgentDojo's undefended tool-calling agent on gpt-4o-mini. The policy code may ask the same model for help through one function, <code>api_request</code>. It runs in a sandbox with no network, files, processes or threads, within 768 MiB and 20 CPU seconds per episode, and each episode is capped at 650,000 model tokens and 120 policy model calls.</p>
