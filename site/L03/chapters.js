@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L03-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 
@@ -27,7 +30,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to predict a branch?",
   minutes: "About 70 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L03-1.mp4": "Part 1 of 4 · Branches: counters, history and values · 3 min · narrated by Boxi Yu",
+    "media/L03-2.mp4": "Part 2 of 4 · RUNLTS: the newest value, and a hard bar · 3 min · narrated by Boxi Yu",
+    "media/L03-3.mp4": "Part 3 of 4 · KAMI: a matrix multiply inside one thread block · 3 min · narrated by Boxi Yu",
+    "media/L03-4.mp4": "Part 4 of 4 · Clusterwise SpGEMM: eight rows at a time · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -38,6 +47,7 @@ const CHAPTERS = [
     tags: ["two-bit counter", "branch history", "TAGE", "register values"],
     hero: "code:counter", heroCaption: "A two-bit counter, the smallest predictor",
     sections: [
+      video(1, "Branches: counters, history and values", "Part 1 of 4 of this lecture's video: branches: counters, history and values."),
       { id: "guess", title: "Why a processor guesses", html: `
         <p>A processor fetches instructions far ahead of the ones it is executing. When it meets a conditional branch, it cannot wait to learn the direction; it <b>predicts</b> it and goes on. A wrong guess means the work fetched since then is thrown away. The task counts both costs per 1,000 instructions: <b>mispredictions</b> (BrMisPKI) and the <b>cycles spent on the wrong path</b> (CycWpPKI).</p>
         <p>The simplest predictor keeps one <b>two-bit counter</b> per branch, from 0 to 3. It predicts taken at 2 or 3, and moves one step toward each outcome. One surprise does not flip it.</p>
@@ -63,6 +73,7 @@ const CHAPTERS = [
     tags: ["out-of-order", "newest producer", "192 KiB", "FDI 88.8"],
     hero: "producer", heroCaption: "Eight events on one register, in the order the processor delivers them.",
     sections: [
+      video(2, "RUNLTS: the newest value, and a hard bar", "Part 2 of 4 of this lecture's video: rUNLTS: the newest value, and a hard bar."),
       { id: "newest", title: "Only the newest value counts", html: `
         <p>A real processor runs instructions <b>out of order</b>. When the branch is predicted, the producer of a register may not have run yet, and an older producer of the same register may run late, after a newer one. The task gives the predictor two callbacks: <code>decode_notify</code> when an instruction is decoded and claims a destination register, and <code>execute_notify</code> when it runs and the value is known. A value may be used only if it comes from the newest claimant.</p>
         ${code("newest")}
@@ -103,6 +114,7 @@ const CHAPTERS = [
     tags: ["thread block", "warps", "tensor cores", "arithmetic intensity"],
     hero: "kami", heroCaption: "Pick a shape and a number of warps.",
     sections: [
+      video(3, "KAMI: a matrix multiply inside one thread block", "Part 3 of 4 of this lecture's video: kAMI: a matrix multiply inside one thread block."),
       { id: "idea", title: "Many small products", html: `
         <p>A GPU runs threads in <b>thread blocks</b>. A block runs on one streaming multiprocessor, and its threads come in <b>warps</b> of 32. Many HPC and AI workloads need a great number of <em>small</em> matrix products, one per block: general, low-rank, batched and sparse multiplication. <b>KAMI</b> (Wang et al., SC 2025) brings ideas from <b>communication-avoiding</b> matrix multiplication, first built for clusters of machines, into a single block: the warps split the work so that they exchange as little data as possible through shared memory, and they compute on the double-precision <b>tensor cores</b>.</p>` },
       { id: "memory", title: "Memory or compute?", html: `
@@ -149,6 +161,7 @@ const CHAPTERS = [
     tags: ["Gustavson", "reordering", "clusters", "15% margin"],
     hero: "code:spgemmScore", heroCaption: "The pass rule and score, in small",
     sections: [
+      video(4, "Clusterwise SpGEMM: eight rows at a time", "Part 4 of 4 of this lecture's video: clusterwise SpGEMM: eight rows at a time."),
       { id: "idea", title: "Row by row, or eight at a time", html: `
         <p>Multiplying two <b>sparse</b> matrices (SpGEMM) is a core step of graph analytics and scientific computing. The usual method, <b>Gustavson's</b>, works row by row: for each stored entry <code>A[i, k]</code>, it reads row <code>k</code> of B and adds <code>A[i, k] · B[k, :]</code> into row <code>i</code> of the result. Each stored entry of A costs one read of a row of B.</p>
         <p><em>Improving SpGEMM Performance Through Matrix-Reordering and Cluster-wise Computation</em> (Islam, Xu, Dai and Buluç, SC 2025) groups neighboring rows of A into <b>clusters</b>. For a cluster, it reads each needed row of B once and uses it for every row of the cluster. To make the rows of a cluster share columns, it first <b>reorders</b> the rows so that similar rows sit together. The paper compares 10 row orderings and 3 ways of forming clusters on 110 matrices; its best scheme, hierarchical clustering, is 1.39× faster on average. The task uses the simplest scheme: fixed clusters of eight consecutive rows after an RCM reordering.</p>` },
