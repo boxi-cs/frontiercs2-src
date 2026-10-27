@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L08-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const asOf = (slug, extra = "") => `<p class="meta">As of October 26, 2026.${extra} <a href="${TASK}${slug}" target="_blank" rel="noopener">Full table ↗</a></p>`;
@@ -29,7 +32,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to root a join tree by hand?",
   minutes: "About 90 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L08-1.mp4": "Part 1 of 4 · Joins: Yannakakis and JoinBoost · 4 min · narrated by Boxi Yu",
+    "media/L08-2.mp4": "Part 2 of 4 · FARGO: when to stop probing · 3 min · narrated by Boxi Yu",
+    "media/L08-3.mp4": "Part 3 of 4 · Graph patterns: SCOPE and ScaleGPM · 3 min · narrated by Boxi Yu",
+    "media/L08-4.mp4": "Part 4 of 4 · Checkpoints, branches and versions: Spectrum, Seer and Persistent Treap · 3 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -40,6 +49,7 @@ const CHAPTERS = [
     tags: ["acyclic joins", "semijoin", "join tree", "query plans", "FDI 83.0"],
     hero: "code:rebuild", heroCaption: "A join tree, rebuilt from any root",
     sections: [
+      video(1, "Joins: Yannakakis and JoinBoost", "Part 1 of 4 of this lecture's video: joins: Yannakakis and JoinBoost."),
       { id: "idea", title: "Rows that cannot match", html: `
         <p>A database joins tables two at a time. A plan built this way can produce intermediate results far larger than the final answer. For acyclic joins, the <b>Yannakakis algorithm</b> avoids this. It first runs a bottom-up pass of <b>semijoins</b> (keep the rows of one table that have a partner in another), which drops every row with no partner below it in the join tree, then joins top-down. The paper (PVLDB 2025) engineers this for a column store, so that it never runs much slower than the binary plan and often runs much faster.</p>
         <p>Our tables follow the task page's example from Stack Overflow data. <code>u</code> holds users (after a selective filter, four are left), <code>p</code> posts with their owner, and <code>c</code> comments with their post. Attribute 0 is a post id and attribute 1 a user id. The optimizer's plan joins comments with posts first, then with users.</p>
@@ -124,6 +134,7 @@ const CHAPTERS = [
     tags: ["MIPS", "locality-sensitive hashing", "multi-probing", "quantization distance", "early stopping"],
     hero: "code:probe", heroCaption: "Every bucket of every table, in one global order",
     sections: [
+      video(2, "FARGO: when to stop probing", "Part 2 of 4 of this lecture's video: fARGO: when to stop probing."),
       { id: "idea", title: "One global order of buckets", html: `
         <p><b>Maximum inner-product search</b> (MIPS) finds the stored vectors whose dot product with a query is largest; retrieval and recommendation depend on it. <b>FARGO</b> (PVLDB 2023) splits the vectors into partitions by length. Within a partition, one extra coordinate gives every vector the same length, so a large inner product means a small angle. Each partition is hashed into <code>L</code> tables of <code>K</code> sign bits, one per random projection.</p>
         <p>A query's own bucket in each table comes first. Flipping bit <code>i</code> costs the query's squared projection on that bit, normalized, so a bucket's <b>quantization distance</b> (QD) is the sum of the costs of the bits where it differs from the query's key. FARGO probes buckets across all tables in one global order of QD. Our data: 800 vectors in 12 dimensions, in 8 clusters, with 4 tables of 6 bits and 4 partitions.</p>
@@ -181,6 +192,7 @@ const CHAPTERS = [
     tags: ["subgraph counting", "orbits", "homomorphisms", "regret", "FDI 46.8 and 38.2"],
     hero: "code:formulas", heroCaption: "Local counts from degrees and common neighbors",
     sections: [
+      video(3, "Graph patterns: SCOPE and ScaleGPM", "Part 3 of 4 of this lecture's video: graph patterns: SCOPE and ScaleGPM."),
       { id: "local", title: "Local counts", html: `
         <p><b>SCOPE</b> (PVLDB 2024) counts small patterns around every vertex of a large graph: for each vertex, how many copies of a pattern place one chosen pattern vertex, the <b>orbit</b>, there. By definition the count is <code>|ISO(v)| · |θ| / |Aut(p)|</code>: the one-to-one edge-preserving maps that send the orbit vertex to <code>v</code>, times the size of its orbit under the pattern's symmetries, over the number of symmetries. Our graph has 40 vertices and 120 edges.</p>
         ${code("local")}
@@ -223,6 +235,7 @@ const CHAPTERS = [
     tags: ["EVM", "checkpoints", "copy on write", "branch prediction", "FDI 64.6 and 53.7"],
     hero: "code:paged", heroCaption: "Pages of four, shared until written",
     sections: [
+      video(4, "Checkpoints, branches and versions: Spectrum, Seer and Persistent Treap", "Part 4 of 4 of this lecture's video: checkpoints, branches and versions: Spectrum, Seer and Persistent Treap."),
       { id: "stack", title: "Checkpoints on the stack", html: `
         <p><b>Spectrum</b> (PVLDB 2024) runs Ethereum smart-contract transactions in parallel but commits them in the order consensus fixed. When two conflict, it does not restart the later one; it rolls it back to a <b>checkpoint</b> taken partway through. A checkpoint saves the code position and the operand stack. Copying a deep stack at every checkpoint is slow and uses memory. Our second stack keeps items in pages of four: a checkpoint copies only the page table, a list of pointers that our model does not count (Opus delayed even that copy), and a page is copied only on its first write after a checkpoint.</p>
         ${code("copystack")}
