@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L06-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const SLUG = "exact-sequence-alignment";
@@ -28,7 +31,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to align?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L06-1.mp4": "Part 1 of 4 · Edit distance: a table and a path · 4 min · narrated by Boxi Yu",
+    "media/L06-2.mp4": "Part 2 of 4 · Myers's algorithm and the band · 3 min · narrated by Boxi Yu",
+    "media/L06-3.mp4": "Part 3 of 4 · Hirschberg: the path in linear memory · 3 min · narrated by Boxi Yu",
+    "media/L06-4.mp4": "Part 4 of 4 · The task: judged on time and memory · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -39,6 +48,7 @@ const CHAPTERS = [
     tags: ["edit distance", "dynamic programming", "traceback", "CIGAR", "NW / SHW / HW"],
     hero: "code:traceback", heroCaption: "Tracing an alignment back and writing it as CIGAR",
     sections: [
+      video(1, "Edit distance: a table and a path", "Part 1 of 4 of this lecture's video: edit distance: a table and a path."),
       { id: "idea", title: "Edit distance", html: `
         <p>The <b>edit distance</b> between a query <code>q</code> and a target <code>t</code> is the smallest number of single-letter edits that turn one into the other. There are three edits, each costing one: a <b>substitution</b> (a mismatch), an <b>insertion</b> (a query letter with no partner in the target) and a <b>deletion</b> (a target letter with no partner in the query). Biologists use it to compare DNA reads with a genome: mutations and sequencing errors are exactly these edits.</p>
         <p>FrontierCS 2 has one Bioinformatics task, <b>Edlib</b>, from Šošić and Šikić's paper <em>Edlib: a C/C++ library for fast, exact sequence alignment using edit distance</em> (Bioinformatics 2017). Edlib finds the exact edit distance and an alignment that achieves it, with Myers's bit-vector algorithm, a band that grows until it holds the answer, and Hirschberg's method, which recovers the alignment without storing the whole table. The task removes that last part, the path recovery. With one task, this lecture goes deeper than the others. The Python programs are ours; every output shown is the real output.</p>` },
@@ -73,6 +83,7 @@ const CHAPTERS = [
     tags: ["bit-parallel", "Myers 1999", "Ukkonen band", "k doubling"],
     hero: "code:myers", heroCaption: "Myers's algorithm: a column per target letter",
     sections: [
+      video(2, "Myers's algorithm and the band", "Part 2 of 4 of this lecture's video: myers's algorithm and the band."),
       { id: "deltas", title: "Columns of +1, 0 and −1", html: `
         <p>Neighbouring cells of the table differ by at most one. So a column can be stored as the <b>deltas</b> going down it: +1, 0 or −1 per row. Myers (1999) keeps them in two bit vectors, <code>pv</code> (the rows where the delta is +1) and <code>mv</code> (the rows where it is −1), and computes the next column from the current one with a handful of bitwise operations per word of 64 rows: 64 cells per operation. <code>peq</code> gives, for each letter, the rows where the query has that letter.</p>
         ${code("myers")}
@@ -97,6 +108,7 @@ const CHAPTERS = [
     tags: ["Hirschberg 1975", "divide and conquer", "linear memory", "path check"],
     hero: "code:middle", heroCaption: "Meeting in the middle: the task page's example",
     sections: [
+      video(3, "Hirschberg: the path in linear memory", "Part 3 of 4 of this lecture's video: hirschberg: the path in linear memory."),
       { id: "memory", title: "The full table is too big", html: `
         <p>Tracing back needs the whole table, or at least all of Myers's columns. Edlib's own rule, in the library source the agent reads, estimates that storage as 2 words and an <code>int</code> per block per column, plus 8 bytes per column, and traces back directly only below 1 MiB. Here is the estimate for the task's sizes, with one column of blocks for comparison:</p>
         ${code("memory")}
@@ -122,6 +134,7 @@ const CHAPTERS = [
     tags: ["path recovery", "pass rule", "noisy timing", "FDI 74.5"],
     hero: "code:timing", heroCaption: "Our model of the task's timing rule",
     sections: [
+      video(4, "The task: judged on time and memory", "Part 4 of 4 of this lecture's video: the task: judged on time and memory."),
       { id: "writes", title: "What the agent writes", html: `
         <p>The task keeps all of Edlib except the body of one function, <code>obtainAlignment&shy;Hirschberg</code>. The agent gets the query, the target interval, their reversed copies and the exact distance, and must return an optimal path as an array of operation bytes, allocated as the library expects. Any optimal path is accepted. The function may use local helpers and its own data structures, but nothing outside its body may change, and it may not touch files, the clock, other processes or threads.</p>` },
       { id: "judged", title: "How it is judged", html: `
