@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L00-${k}.mp4"></div>` });
 const SITE = "https://frontier-cs.org/";
 
 const LECTURE = {
@@ -26,7 +29,12 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to see how a task is built?",
   minutes: "About 40 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L00-1.mp4": "Part 1 of 3 · How a task is built · 4 min · narrated by Boxi Yu",
+    "media/L00-2.mp4": "Part 2 of 3 · What counts as a pass · 3 min · narrated by Boxi Yu",
+    "media/L00-3.mp4": "Part 3 of 3 · Reading the leaderboard, and what a run costs · 5 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -53,6 +61,7 @@ const CHAPTERS = [
     tags: ["human reference", "train call", "development workloads", "final submission"],
     hero: "anatomyStill", heroCaption: "Click a step.",
     sections: [
+      video(1, "How a task is built", "Part 1 of 3 of this lecture's video: how a task is built."),
       { id: "built", title: "Delete the contribution", html: `
         <p>A task starts from a paper's own repository. The builders delete the paper's contribution: the queue logic in BBQ, the search in MetaOpt, the scheduling decision in Shockwave. The rest of the code stays, so the agent works inside a real research codebase. The authors' code is the <b>human reference</b>.</p>` },
       { id: "sees", title: "What the agent sees", html: `
@@ -75,6 +84,7 @@ const CHAPTERS = [
     tags: ["pass rule", "margin", "quality band", "SVG-EAR", "KV Compaction"],
     hero: "code:check", heroCaption: "One workload of a pass rule with a margin",
     sections: [
+      video(2, "What counts as a pass", "Part 2 of 3 of this lecture's video: what counts as a pass."),
       { id: "rule", title: "The rule", html: `
         <p>A run <b>passes</b> only when its final submission beats the human reference on every metric the task checks and on every hidden workload. The criteria are set from the reference's own measurements, and some ask for a margin. For SVG-EAR, a video model's sparse attention, the latency must be at most 0.96 of the reference's, and three image-quality measures must stay within small margins of the reference's scores: PSNR at most 0.25 dB lower, SSIM at most 0.01 lower, LPIPS at most 0.005 higher.</p>
         ${code("check")}
@@ -93,6 +103,7 @@ const CHAPTERS = [
     tags: ["pass rate", "mean score", "FCI", "FDI", "Epoch AI ECI"],
     hero: "fit", heroCaption: "A toy version of the FCI fit. Click cells to change it.",
     sections: [
+      video(3, "Reading the leaderboard, and what a run costs", "Part 3 of 3 of this lecture's video: reading the leaderboard, and what a run costs."),
       { id: "rate", title: "Pass rate", html: `
         <p>The leaderboard's main number is <b>pass rate</b>: the share of a model's runs that pass. With one run per task, it is the number of tasks passed out of 48.</p>
         ${code("passed")}` },
