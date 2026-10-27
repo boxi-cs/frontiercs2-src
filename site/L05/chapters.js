@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L05-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const SLUG = "binary-fuse-filter-construction-and-lookup";
@@ -28,7 +31,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to build a filter?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L05-1.mp4": "Part 1 of 4 · The Bloom filter: never miss a stored key · 3 min · narrated by Boxi Yu",
+    "media/L05-2.mp4": "Part 2 of 4 · The xor filter: peeling a hypergraph · 3 min · narrated by Boxi Yu",
+    "media/L05-3.mp4": "Part 3 of 4 · The binary fuse filter: a fuse that burns from both ends · 3 min · narrated by Boxi Yu",
+    "media/L05-4.mp4": "Part 4 of 4 · The task: construction, judged five ways · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -39,6 +48,7 @@ const CHAPTERS = [
     tags: ["approximate membership", "false positives", "Bloom filter", "lower bound"],
     hero: "code:bits", heroCaption: "Bits per key for two false-positive rates",
     sections: [
+      video(1, "The Bloom filter: never miss a stored key", "Part 1 of 4 of this lecture's video: the Bloom filter: never miss a stored key."),
       { id: "idea", title: "Approximate membership", html: `
         <p>A <b>filter</b> answers one question about a set <code>S</code> of keys: is <code>x</code> in <code>S</code>? It may say "yes" for a key that is not in <code>S</code> (a <b>false positive</b>), with a small probability <code>ε</code>, but it never says "no" for a key that is in <code>S</code>. Engineers put a filter in front of something slow, a disk or a network, so most lookups of absent keys stop early.</p>
         <p>A filter stores much less than the keys themselves. Any filter with false-positive rate <code>ε</code> needs at least <code>log2(1/ε)</code> bits per key; for <code>ε = 1/256</code>, that is 8 bits.</p>
@@ -65,6 +75,7 @@ const CHAPTERS = [
     tags: ["xor filter", "fingerprint", "3-hypergraph", "peeling", "threshold"],
     hero: "peelAuto", heroCaption: "Peel the 8 keys, then fill their slots in reverse.",
     sections: [
+      video(2, "The xor filter: peeling a hypergraph", "Part 2 of 4 of this lecture's video: the xor filter: peeling a hypergraph."),
       { id: "idea", title: "Three slots and a fingerprint", html: `
         <p>An <b>xor filter</b> (Graf and Lemire, 2020) stores a table <code>B</code> of small values, each <code>b</code> bits. Every key has a <code>b</code>-bit <b>fingerprint</b> <code>f(x)</code> and three slots <code>h0(x)</code>, <code>h1(x)</code>, <code>h2(x)</code>, one in each third of the table. Construction must fill <code>B</code> so that, for every stored key,</p>
         <p style="text-align:center"><code>B[h0(x)] ⊕ B[h1(x)] ⊕ B[h2(x)] = f(x)</code></p>
@@ -96,6 +107,7 @@ const CHAPTERS = [
     tags: ["binary fuse filter", "segments", "fuse graph", "cache locality"],
     hero: "code:layout", heroCaption: "The layout, as the library's header computes it",
     sections: [
+      video(3, "The binary fuse filter: a fuse that burns from both ends", "Part 3 of 4 of this lecture's video: the binary fuse filter: a fuse that burns from both ends."),
       { id: "layout", title: "The layout", html: `
         <p>The binary fuse filter changes only where a key's three slots go. The table is cut into many equal <b>segments</b> of length <code>L</code>, a power of two. A key picks one starting segment at random, and its three slots lie in that segment and the next two, at random offsets. This layout comes from the <b>fuse graphs</b> of Dietzfelbinger and Walzer (2019).</p>
         <p>The library's public header chooses the segment length and the number of slots per key from the number of keys <code>n</code>. Here are its formulas, for three slots per key and 2 up to a few million keys (the header also caps the segment length, and treats n ≤ 1 apart):</p>
@@ -120,6 +132,7 @@ const CHAPTERS = [
     tags: ["construction", "pass rule", "score", "FDI 48.3"],
     hero: "code:score", heroCaption: "The score, from Claude Opus 5.5's means",
     sections: [
+      video(4, "The task: construction, judged five ways", "Part 4 of 4 of this lecture's video: the task: construction, judged five ways."),
       { id: "writes", title: "What the agent writes", html: `
         <p>The task keeps the library's allocation, lookup and serialization, and removes the <b>population</b> routines, the step that fills the table, for 8-bit and 16-bit fingerprints. (The xor filter's construction is removed too, so it cannot serve as an answer; it is not scored.) The agent writes <code>binary_fuse8_populate</code> and <code>binary_fuse16_populate</code>. It may also change the filter's struct, its hash and its lookup, changing up to 32 files under <code>include/</code>, as long as the API stays the same and every byte the filter keeps is allocated through <code>malloc</code> and friends, where the evaluator counts it.</p>` },
       { id: "judged", title: "How it is judged", html: `
