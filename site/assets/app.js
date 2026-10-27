@@ -22,9 +22,12 @@ function mountDemos(root) {
   });
   root.querySelectorAll("[data-video]").forEach((v) => {
     const src = v.dataset.video;
-    // English and Chinese subtitles sit next to the video as LNN.en.vtt / LNN.zh.vtt (kit/subs.py).
+    // Subtitles sit next to the video as LNN-K.<lang>.vtt; LECTURE.subtitles lists the languages there are.
     const base = src.replace(/\.mp4$/, "");
-    v.innerHTML = `<video controls preload="metadata" src="${src}"><track kind="subtitles" srclang="en" label="English" src="${base}.en.vtt" default><track kind="subtitles" srclang="zh" label="中文" src="${base}.zh.vtt"></video>
+    const LABELS = { en: "English", zh: "中文" };
+    const tracks = (LECTURE.subtitles || ["en"]).map((l, k) =>
+      `<track kind="subtitles" srclang="${l}" label="${LABELS[l] || l}" src="${base}.${l}.vtt"${k ? "" : " default"}>`).join("");
+    v.innerHTML = `<video controls preload="metadata" src="${src}">${tracks}</video>
       <div class="vcap">${(LECTURE.videos || {})[src] || ""}</div>`;
     v.querySelector("video").addEventListener("error", () => {
       v.innerHTML = `<div class="missing">The video file is not bundled with this copy of the site.<br>Put it at <code>${src}</code> to play it here.</div>`;

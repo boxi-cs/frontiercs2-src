@@ -29,6 +29,8 @@ REMOTE = "https://github.com/boxi-cs/frontiercs2-src.git"
 CLONE = ROOT / "build" / "src-clone"
 STATE = ROOT / "build" / "sync-state.json"
 WORDS = ROOT / "tools" / ".private-words"
+# Not exported: the video pipeline runs only on the maintainer's machine (local tool paths).
+EXCLUDE = ("videos", "course.toml", "voice/animind_voice.py")
 AUTHOR = {"GIT_AUTHOR_NAME": "Boxi Yu", "GIT_AUTHOR_EMAIL": "89333694+BoxiYu@users.noreply.github.com"}
 AUTHOR.update(GIT_COMMITTER_NAME=AUTHOR["GIT_AUTHOR_NAME"], GIT_COMMITTER_EMAIL=AUTHOR["GIT_AUTHOR_EMAIL"])
 
@@ -69,6 +71,12 @@ def export_tree(dest):
         git("archive", "-o", str(tar), "HEAD", prefix, cwd=top)
         with tarfile.open(tar) as t:
             t.extractall(tmp, filter="data")
+        for name in EXCLUDE:
+            path = Path(tmp) / prefix / name
+            if path.is_dir():
+                shutil.rmtree(path)
+            elif path.exists():
+                path.unlink()
         shutil.copytree(Path(tmp) / prefix, dest, dirs_exist_ok=True)
 
 

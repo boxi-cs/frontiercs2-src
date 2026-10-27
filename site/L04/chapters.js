@@ -9,6 +9,9 @@ const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L04-${k}.mp4"></div>` });
 
 const LECTURE = {
   number: 4,
@@ -27,7 +30,12 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to remove the best packet by hand?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L04-1.mp4": "Part 1 of 3 · BBQ · 5 min · narrated by Boxi Yu",
+    "media/L04-2.mp4": "Part 2 of 3 · MetaOpt · 3 min · narrated by Boxi Yu",
+    "media/L04-3.mp4": "Part 3 of 3 · Shockwave · 4 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -63,6 +71,7 @@ const CHAPTERS = [
     tags: ["priority queue", "bitmap tree", "counter", "back-to-back"],
     hero: "bbqMini", heroCaption: "The notes' example: five packets, three removals.",
     sections: [
+      video(1, "BBQ, a faster clock for a packet queue", "This video covers this chapter and the next: the bitmap tree, the clock model, and the two designs that passed."),
       { id: "queue", title: "Sixteen priorities, two levels", html: `
         <p>A network card or a switch needs a <b>priority queue</b> to schedule packets. Each packet gets an integer priority, and the queue must hand out the best one next, millions of times a second. <b>BBQ</b> (Atre, Sadok and Sherry, NSDI 2024) builds that queue as a circuit.</p>
         <p>Take 16 priorities, 0 to 15, with 0 the best. BBQ keeps them in a tree of 4-bit bitmaps. The bottom level has four rows of four bits, one bit per priority. The top level has one row; its bit <code>i</code> is 1 when row <code>i</code> below holds a 1. Each bit also has a <b>counter</b> of the packets below it. A bit is 1 exactly when its counter is above 0, so the program keeps only the counters.</p>
@@ -124,6 +133,7 @@ const CHAPTERS = [
     tags: ["linear program", "POP", "demand pinning", "adversarial input"],
     hero: "metaopt", heroCaption: "Pick a demand for each pair; the page solves the LPs.",
     sections: [
+      video(2, "traffic that defeats a heuristic", "This video walks through the two shortcuts, the four-site example and how the best agent searched."),
       { id: "idea", title: "Optimal routing and two shortcuts", html: `
         <p>A wide-area network routes traffic between many pairs of sites. The best routing solves a <b>linear program</b> (LP), which can be slow, so operators use <b>heuristics</b>. A heuristic is fast but sometimes far from optimal. <b>MetaOpt</b> (NSDI 2024) asks: <em>on which traffic does the heuristic do worst?</em> The answer tells an operator how much the heuristic can cost.</p>
         <p>The heuristic in the task keeps the better of two shortcuts:</p>
@@ -154,6 +164,7 @@ const CHAPTERS = [
     tags: ["makespan", "JCT", "finish-time fairness", "round-based"],
     hero: "sched", heroCaption: "Six jobs on four GPUs, three simple policies.",
     sections: [
+      video(3, "sharing GPUs fairly", "This video covers the four counts, three simple policies on a small cluster, and what the agents did. It ends the lecture."),
       { id: "counts", title: "Four counts", html: `
         <p>A shared cluster runs many machine-learning training jobs. Each round (120 seconds in the task), a <b>scheduler</b> chooses which jobs run on the cluster's GPUs. Many jobs change their batch size as they train, and with it their speed. <b>Shockwave</b> (NSDI 2023) plans for these changes ahead, to finish jobs fast while treating each one fairly.</p>
         <p>The task judges a schedule on two hidden traces of eight jobs each, on four counts, and a pass must beat the reference strictly on all four, on both traces:</p>
