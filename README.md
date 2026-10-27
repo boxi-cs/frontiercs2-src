@@ -71,16 +71,17 @@ Preview: the `frontiercs2-site` launch config (port 8402); the built site: `fron
 | L03 | Architecture | published |
 | L04 | Network | published |
 | L05 | Theory | published |
-| L06 | Bioinformatics | free: good first lecture (one task) |
-| L07 | Machine Learning | free (nine tasks) |
-| L08 | Database | free (nine tasks) |
-| L09 | Programming Languages | free |
-| L10 | Software Engineering | free: good first lecture (one task) |
+| L06 | Bioinformatics | in progress (Boxi) |
+| L07 | Machine Learning | in progress (Boxi) |
+| L08 | Database | in progress (Boxi) |
+| L09 | Programming Languages | in progress (Boxi) |
+| L10 | Software Engineering | in progress (Boxi) |
 | L11 | Cryptography | published |
-| L12 | Security | free |
-| L13 | Robotics | free |
+| L12 | Security | in progress (Boxi) |
+| L13 | Robotics | in progress (Boxi) |
 
-To claim a free lecture, ask Boxi, then open an issue (see CONTRIBUTING.md).
+Every lecture now has a first draft in progress. To help, ask Boxi for a fix or a later lecture's
+review, then open an issue (see CONTRIBUTING.md).
 
 ### Log
 

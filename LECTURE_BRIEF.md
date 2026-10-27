@@ -76,6 +76,22 @@ No company branding anywhere.
    after edits): every chapter loads, every demo works to the end, no console errors other than
    the home page's 404 checks, at 1200 px and at 375 px with no horizontal scroll.
 6. Every number about a model's result matches the task page.
+7. Privacy: `grep -nIi -f frontiercs2/tools/.private-words frontiercs2/notes/LNN-* frontiercs2/site/LNN/*`
+   prints nothing (the word list exists only in the maintainer's copy; skip this check elsewhere).
+   Don't name other courses, local paths or people's emails anywhere.
+
+## Tips from the first lectures
+
+- Use the preview server that is already running on port 8402 (the `frontiercs2-site` launch
+  config); don't start another one. Reload with a cache-buster (`?r=2`) after edits.
+- Python 3.12+ `sum()` of floats uses compensated summation, so a plain JS loop can differ in the
+  last digits. Sum with an explicit loop in the Python too, or copy CPython's algorithm in JS.
+- Round half-way values (like 43.25) can round differently in Python and JS: print one more decimal.
+- Long inline code names overflow at 375 px: break them or wrap the paragraph.
+- When the site's results table and the "Solution" section name a model differently ("Opus 5.5"
+  vs "Claude Opus 5.5"), use the full name.
+- A field with many tasks (nine): one section per task is enough for the smaller ones; give the
+  tasks with a case study or a striking result a chapter of their own.
 
 ## Style
 
