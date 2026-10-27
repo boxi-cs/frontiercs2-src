@@ -61,6 +61,19 @@ voice/L04-test.lines.json  a 26-second voice test; audio in voice/out/ (not in g
 
 Preview: the `frontiercs2-site` launch config (port 8402); the built site: `frontiercs2-publish-preview` (8403).
 
+## v1.0 (the first mature version)
+
+1. All 14 lectures published.
+2. Each lecture reviewed by an independent reviewer that did not write it: every result number
+   against its task page, every demo run to the end, the explanations read for clarity. Fixes go
+   back to the lecture's author.
+3. Course-wide polish: shared styles that several lectures copied move into `site/assets/`;
+   previous/next lecture links; time and pass rate on each home-page card; one date, one way of
+   naming models and terms; an About page on how the course is made and how fresh its data is.
+4. A full site check at 1200 px and 375 px, then the tag `v1.0`.
+
+Videos (animind visuals, Boxi's ElevenLabs voice) come after v1.0, starting with an L04 pilot.
+
 ## Status
 
 | Lecture | Field | State |
