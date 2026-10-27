@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L13-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 
@@ -27,7 +30,12 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to turn noise into a plan?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L13-1.mp4": "Part 1 of 3 · Diffusion Policy: actions from noise · 5 min · narrated by Boxi Yu",
+    "media/L13-2.mp4": "Part 2 of 3 · Diffusion Policy: the sampling task · 4 min · narrated by Boxi Yu",
+    "media/L13-3.mp4": "Part 3 of 3 · MuJoCo Playground: a walker on a deadline · 5 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -38,6 +46,7 @@ const CHAPTERS = [
     tags: ["multimodal actions", "regression", "denoising", "DDPM"],
     hero: "code:denoise", heroCaption: "The best clean guess from a noisy action (a real network guesses the noise; the two convert exactly)",
     sections: [
+      video(1, "Diffusion Policy: actions from noise", "Part 1 of 3 of this lecture's video: diffusion Policy: actions from noise."),
       { id: "idea", title: "Generating actions", html: `
         <p>A robot policy maps what the robot sees to what it does next. The usual way to learn one from human demonstrations is regression: predict the demonstrated action, with the squared error as the loss. <em>Diffusion Policy</em> (Chi et al., RSS 2023) instead learns to <b>generate</b> actions the way image models generate pictures: start from random noise and remove it step by step, with a trained network guiding each step. The paper's point is that demonstrations are often <b>multimodal</b>: people solve the same situation in different ways, and regression averages those ways into one that nobody used.</p>` },
       { id: "average", title: "Two good ways around an obstacle", html: `
@@ -63,6 +72,7 @@ const CHAPTERS = [
     tags: ["DDIM", "DPM-Solver++", "Push-T", "latency"],
     hero: "code:dpm2", heroCaption: "A second-order jump reuses the previous guess",
     sections: [
+      video(2, "Diffusion Policy: the sampling task", "Part 2 of 3 of this lecture's video: diffusion Policy: the sampling task."),
       { id: "ddim", title: "A deterministic shortcut", html: `
         <p>A hundred network calls per plan are slow. On the task's CPU, the authors' sampler takes 1,150 ms per prediction. Most of that work is spent at high noise levels, where the guess barely changes.</p>
         <p>The <b>DDIM</b> update drops the fresh noise. It splits the current sample into a clean guess and the noise that the guess implies, then rebuilds the sample at a much lower level with the same noise. The levels can then be far apart. <code>levels(k)</code> spreads <code>k</code> calls evenly.</p>
@@ -104,6 +114,7 @@ const CHAPTERS = [
     tags: ["reinforcement learning", "tracking reward", "random search", "Go1"],
     hero: "code:train", heroCaption: "Random search: try both directions, move toward the better",
     sections: [
+      video(3, "MuJoCo Playground: a walker on a deadline", "Part 3 of 3 of this lecture's video: muJoCo Playground: a walker on a deadline."),
       { id: "idea", title: "Training in a GPU simulator", html: `
         <p><em>MuJoCo Playground</em> (Zakka et al., RSS 2025) trains robot controllers in a GPU physics simulator within minutes, running thousands of simulated robots at once. One of its examples teaches a Unitree Go1 quadruped to follow joystick commands. The policy reads the robot's own sensors and the commanded forward, sideways and turning speeds, and outputs target angles for its twelve joints. It is trained by reinforcement learning (PPO) for 200 million simulation steps.</p>` },
       { id: "reward", title: "The reward", html: `
