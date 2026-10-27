@@ -1,0 +1,16 @@
+{
+  "keys": "def make_keys(",
+  "bloom": "def bloom_build(",
+  "bits": "print(\"bits per key",
+  "build": "def build(keys, size",
+  "small": "small = [12, 25",
+  "lookup": "def contains(",
+  "threshold": "keys2k = make_keys",
+  "layout": "def fuse_layout(",
+  "fusevsxor": "big = make_keys(n, 4)",
+  "burn": "when = [0] * size",
+  "allowance": "def allowance(",
+  "memory": "total, overheads = 0",
+  "score": "def score(pairs)",
+  "dup": "dup = small + "
+}

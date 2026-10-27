@@ -1,0 +1,18 @@
+{
+  "attn": "CLUSTERS = {",
+  "plans": "def output(plan):",
+  "route": "def make_layer(seed):",
+  "clipscore": "def clip_score(",
+  "checks": "def clip_checks(",
+  "variance": "with variance",
+  "serve": "def serve(",
+  "lscore": "def latency_score(",
+  "knn": "def knn_tiled(",
+  "bound": "def knn_bounded(",
+  "invert": "def speedup_from_score(",
+  "kmeans": "def kmeans_step(",
+  "tag": "def tag(",
+  "dbscan": "def dbscan(",
+  "ari": "def ari(",
+  "ivfpq": "def build_index("
+}

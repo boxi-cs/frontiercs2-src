@@ -1,0 +1,34 @@
+/* L02 demos: RegionsSort array, DBSCAN grid, Hygra incidence table, butterfly matrix. */
+.rs-wrap { display: grid; gap: 4px; margin-bottom: 8px; }
+.rs-row { display: flex; gap: 2px; }
+.rs-country span { border-top: 3px solid; padding-top: 2px; font: 600 11px var(--sans); text-align: center; min-width: 0; overflow: hidden; white-space: nowrap; }
+.rs-block span { flex: 1; border-top: 1px solid var(--line); font-size: 11px; color: var(--stone); text-align: center; }
+.rs-key { flex: 1; min-width: 0; height: 30px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font: 600 12px var(--mono); color: var(--paper); transition: opacity 0.3s; }
+.rs-key.away { opacity: 0.35; }
+.rs-key.hl { outline: 2px solid var(--ink); outline-offset: 1px; opacity: 1; }
+.db-plot svg { max-width: 360px; display: block; margin: 0 auto; }
+.hy-wrap { overflow-x: auto; }
+table.hy { border-collapse: collapse; width: auto; margin: 0 auto 8px; font-size: 12px; }
+table.hy th, table.hy td { padding: 0; border: 1px solid var(--line); text-align: center; }
+table.hy th { padding: 3px 6px; font: 600 12px var(--mono); color: var(--ink-2); white-space: nowrap; }
+table.hy th.now { color: var(--amber); }
+table.hy td { width: 28px; height: 22px; }
+table.hy td.in { background: var(--teal); }
+table.hy td.gone { opacity: 0.3; }
+table.hy tr.dead td.in { background: var(--stone); opacity: 0.35; }
+table.hy tr.dead th { color: var(--stone); text-decoration: line-through; }
+table.hy tr.deg td { font: 600 12px var(--mono); color: var(--ink-2); }
+table.hy tr.deg td.core { background: var(--green-soft); color: var(--green); }
+.seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.bf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.bf-mat svg { max-width: 320px; display: block; margin: 0 auto; }
+.bf-side .stats { margin-top: 0; }
+@media (max-width: 600px) {
+  .bf { grid-template-columns: minmax(0, 1fr); }
+  .rs-key { height: 24px; font-size: 9px; border-radius: 2px; }
+  .rs-row { gap: 1px; }
+  .rs-country span { font-size: 9px; }
+  table.hy td { width: 22px; }
+  table.hy th { padding: 3px 3px; font-size: 11px; }
+}
+[data-demo^="regions"] .msg:empty, [data-demo="peel"] .msg:empty { display: none; }

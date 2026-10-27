@@ -1,0 +1,15 @@
+{
+  "setup": "def digit(key):",
+  "graph": "def regions_graph(A):",
+  "plan": "def plan_bucket(graph, b):",
+  "score": "def speedup_score(S):",
+  "oracle": "def oracle(points):",
+  "grid": "SIDE = EPS / sqrt(2)",
+  "dbscore": "def dbscan_score(",
+  "definition": "def core_by_definition(",
+  "peel": "def peel(edges, nv):",
+  "big": "nv = 2000",
+  "wedges": "def count(adj, rank):",
+  "orders": "for skewed in (False, True):",
+  "bfscore": "reference 34.7"
+}

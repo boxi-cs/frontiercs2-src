@@ -66,11 +66,11 @@ Preview: the `frontiercs2-site` launch config (port 8402); the built site: `fron
 | Lecture | Field | State |
 |---|---|---|
 | L00 | Introduction | published |
-| L01 | MLSys | in progress (Boxi) |
-| L02 | HPC | in progress (Boxi) |
-| L03 | Architecture | in progress (Boxi) |
+| L01 | MLSys | published |
+| L02 | HPC | published |
+| L03 | Architecture | published |
 | L04 | Network | published |
-| L05 | Theory | in progress (Boxi) |
+| L05 | Theory | published |
 | L06 | Bioinformatics | free: good first lecture (one task) |
 | L07 | Machine Learning | free (nine tasks) |
 | L08 | Database | free (nine tasks) |
@@ -90,3 +90,5 @@ To claim a free lecture, ask Boxi, then open an issue (see CONTRIBUTING.md).
   approved and published: repo boxi-cs/frontiercs2 created, GitHub Pages on (main, root).
 - 2026-10-27: L11 Cryptography published. Per-lecture code-keys.json and lecture.css, so lecture
   sessions never edit shared files; LECTURE_BRIEF.md for the remaining lectures.
+- 2026-10-27: L01 MLSys, L02 HPC, L03 Architecture and L05 Theory published, written by four
+  parallel sessions from LECTURE_BRIEF.md and re-checked before release.

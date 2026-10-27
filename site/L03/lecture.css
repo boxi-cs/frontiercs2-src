@@ -1,0 +1,39 @@
+/* L03 demos: branch predictor, register producers, every-trace odds, KAMI layouts, SpGEMM clusters. */
+.bp-lab { font: 600 12px var(--sans); color: var(--ink-2); min-width: 64px; }
+.bp-strip { display: flex; flex-wrap: wrap; gap: 3px; min-height: 26px; margin-top: 12px; }
+.bp-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 6px; }
+.bp-row .bp-strip { margin-top: 0; }
+.bp-cell {
+  width: 20px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+  font: 600 11px var(--mono); border-radius: 4px; border: 1px solid var(--line);
+}
+.bp-cell.hit { background: var(--green-soft); color: var(--green); border-color: var(--green); }
+.bp-cell.miss { background: var(--red-soft); color: var(--red); border-color: var(--red); }
+.bp-empty { font-size: 12px; color: var(--stone); }
+.pr-table { overflow-x: auto; }
+.pr-table table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.pr-table th, .pr-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.pr-table tr.later td { color: var(--stone); opacity: 0.45; }
+.pr-table tr.cur td { background: var(--teal-soft); }
+.pr-table td.stale { color: var(--red); font-weight: 600; }
+.pr-table tr.later td.stale { color: var(--stone); font-weight: normal; }
+.aw-dots { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
+.aw-dots i { width: 12px; height: 12px; border-radius: 50%; }
+.aw-dots i.w { background: var(--green); opacity: 0.75; }
+.aw-dots i.l { background: var(--red); }
+.km-bar { position: relative; height: 26px; margin-top: 10px; background: var(--paper-2); border-radius: 6px; overflow: hidden; }
+.km-bar span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); opacity: 0.6; }
+.km-bar em { position: relative; display: block; padding: 4px 10px; font: normal 12px var(--sans); color: var(--ink); }
+.km-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 12px; }
+.km-c svg { width: 100%; max-height: 240px; }
+.km-c small, .km-opts > small { color: var(--stone); font-size: 11px; display: block; margin-bottom: 6px; }
+.km-opts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.sp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 12px; }
+.sp-spy svg { width: 100%; max-width: 320px; display: block; margin: 0 auto; }
+.sp-side .stats { margin-top: 0; }
+@media (max-width: 600px) {
+  .km-grid, .sp-grid { grid-template-columns: minmax(0, 1fr); }
+  .bp-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .bp-cell { width: 18px; }
+}
+.hero-demo .bp-cell, .chap-hero .bp-cell { width: 16px; height: 20px; font-size: 10px; }

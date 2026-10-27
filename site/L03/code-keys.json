@@ -1,0 +1,15 @@
+{
+  "counter": "def step(table, key, taken):",
+  "history": "def with_history(",
+  "register": "def data_branch(",
+  "newest": "def newest_producer(",
+  "runltsScore": "def runlts_score(",
+  "allWin": "def chance_all_win(",
+  "gemm": "SHAPES = [(16",
+  "warps": "def shared_loads(",
+  "crossover": "def crossover_ratio(",
+  "kamiScore": "def kami_score(",
+  "reads": "def stencil(",
+  "clusters": "def to_clusters(",
+  "spgemmScore": "def spgemm_result("
+}

@@ -1,0 +1,56 @@
+/* L05 demos: Bloom bit strip, peeling slots and keys, threshold bars, fuse strip, score table. */
+.bl-strip { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 2px; margin-top: 12px; }
+.bl-strip i { height: 10px; border-radius: 2px; background: var(--paper-2); border: 1px solid var(--line); }
+.bl-strip i.on { background: var(--teal); border-color: var(--teal); }
+
+.pl-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pl-part small { display: block; font-size: 11px; color: var(--stone); margin-bottom: 4px; }
+.pl-part > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.pl-slot { position: relative; display: flex; align-items: center; justify-content: center; height: 40px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); font: 600 14px var(--mono); color: var(--ink-2); }
+.pl-slot i { position: absolute; top: 2px; left: 4px; font: 400 9px var(--mono); color: var(--stone); font-style: normal; }
+.pl-slot.one { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.pl-slot.set { background: var(--teal-soft); color: var(--teal); }
+.pl-slot.cur { outline: 2px solid var(--amber); outline-offset: 1px; }
+.pl-keys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.pl-key { display: grid; gap: 1px; padding: 6px 8px; border-radius: 6px; background: var(--paper-2); font: 12px var(--mono); }
+.pl-key b { font-size: 14px; }
+.pl-key small { color: var(--stone); }
+.pl-key u { text-decoration-thickness: 2px; text-decoration-color: var(--teal); }
+.pl-key.done { background: var(--teal-soft); }
+.pl-key.cur { outline: 2px solid var(--amber); }
+.pl-query input[type="number"] { width: 110px; }
+
+.th-seeds { display: grid; gap: 4px; margin-top: 12px; }
+.th-seed { display: grid; grid-template-columns: 64px minmax(0, 1fr) 96px; align-items: center; gap: 8px; font-size: 12px; }
+.th-seed small { color: var(--stone); font-family: var(--mono); }
+.th-seed span { height: 10px; border-radius: 5px; background: var(--paper-2); overflow: hidden; }
+.th-seed span i { display: block; height: 100%; background: var(--red); opacity: 0.7; }
+.th-seed.ok span i { background: var(--green); opacity: 1; }
+.th-seed b { font: 600 12px var(--mono); color: var(--red); }
+.th-seed.ok b { color: var(--green); }
+
+.fu-box { margin-top: 8px; }
+.fu-box svg { display: block; width: 100%; height: auto; }
+.fu-segs { margin-top: 8px; }
+.fu-segs small { display: block; font-size: 11px; color: var(--stone); margin-bottom: 4px; }
+.fu-segs > div { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.fu-segs span { text-align: center; padding: 4px 0; border-radius: 4px; font: 600 12px var(--mono); color: var(--ink);
+  background: color-mix(in srgb, var(--amber) calc(var(--p) * 1.5%), var(--paper-2)); }
+
+table.sc { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.sc th, table.sc td { padding: 6px; border-bottom: 1px solid var(--line); text-align: left; }
+table.sc input { width: 84px; font: 13px var(--mono); padding: 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+
+.map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 600px) {
+  .map { grid-template-columns: minmax(0, 1fr); }
+  .pl-slots { gap: 6px; }
+  .pl-part > div { gap: 2px; }
+  .pl-slot { height: 34px; font-size: 12px; }
+  .pl-keys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .th-seed { grid-template-columns: 52px minmax(0, 1fr) 80px; }
+  .fu-segs span { font-size: 10px; }
+  table.sc input { width: 60px; }
+  table.sc th:nth-child(4), table.sc td:nth-child(4) { display: none; }
+}
