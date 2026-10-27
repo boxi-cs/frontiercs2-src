@@ -22,6 +22,9 @@
     .hub-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding-top: 64px; padding-bottom: 56px; }
     .hub-hero h1 { font-size: clamp(36px, 5vw, 54px); margin: 16px 0 16px; line-height: 1.06; letter-spacing: -0.03em; }
     .hub-hero h1 em { font-style: normal; color: var(--teal); }
+    .byline { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 15px; color: var(--ink-2); }
+    .byline b { color: var(--ink); font-weight: 600; }
+    .by-mark { font: 600 10px var(--mono); letter-spacing: .08em; color: var(--teal); border: 1px solid var(--teal); border-radius: 4px; padding: 2px 5px; }
     .hub-hero .lead { font-size: 17px; color: var(--ink-2); margin: 0; max-width: 36em; }
     .stamp { font: 500 12px var(--mono); color: var(--stone); }
     .stamp::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--f-green); margin-right: 8px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--f-green) 22%, transparent); animation: blink 2.4s ease-in-out infinite; }
@@ -103,6 +106,7 @@
       <div>
         <span class="stamp">Results as of October 26, 2026</span>
         <h1>Computer Science R&amp;D, <em>task by task</em></h1>
+        <p class="byline"><span class="by-mark" aria-hidden="true">BY</span>Designed and led by <b>Boxi Yu</b></p>
         <p class="lead">FrontierCS 2 asks AI agents to do CS research. Each task removes the key contribution of a paper from the code released with it, and an agent must write it back and beat the authors' version on every metric. This course takes the 48 tasks one field at a time: what each paper found, what the task removed, how it is judged, and what the agents wrote. Every idea comes with a small model you can run in your browser.</p>
         <div class="cta">
           <a class="btn primary" href="L00/index.html">Start with L00 →</a>
