@@ -1,0 +1,5 @@
+voice/out/
+build/
+voice/.env
+tools/.brand-words
+tools/.private-words

@@ -1,0 +1,12 @@
+{
+  "lwe": "def make_instance(seed):",
+  "valid": "def valid(A, b, s):",
+  "search": "tried, found = 0, []",
+  "space": "for n, w in [(12, 2)",
+  "ckks": "DELTA, SLOTS, SIGMA = ",
+  "score": "def ckks_score(",
+  "replicas": "replicas = [precision(",
+  "pir": "DB = {name: rng.below(256)",
+  "bytes": "def reference_bytes(",
+  "sums": "def two_sums("
+}

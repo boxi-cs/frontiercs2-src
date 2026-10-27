@@ -1,0 +1,32 @@
+/* FrontierCS 2 course: flatter cards and labels, as on frontier-cs.org. Loaded after style.css. */
+.card { border-radius: 10px; }
+.btn { border-radius: 999px; }
+.btn.primary { color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #062e6f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #062e6f; } }
+.cbtn.on { color: var(--paper); }
+h1, h2, h3 { letter-spacing: -0.015em; font-weight: 600; }
+.hero h1 { font-weight: 600; }
+
+/* Labels: a small blue square and the text, like the domain label on a task page. */
+.pill {
+  background: none; border: 0; padding: 0; border-radius: 0;
+  font: 600 13px var(--sans); color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.pill::before { content: ""; width: 8px; height: 8px; background: var(--teal); flex: none; }
+
+.brand-mark { border-radius: 6px; background: var(--teal); color: var(--paper); font: 700 12px var(--mono); }
+.chapcard .num, .steps b, .takeaways .card b, article h2 .sec { color: var(--teal); }
+.chap-hero .abstract { border-left-color: var(--teal); }
+.tag { border-radius: 999px; background: var(--teal-soft); color: var(--ink); font-family: var(--sans); font-weight: 600; }
+article th { font-size: 13px; color: var(--ink-2); }
+article th, article td { border-width: 0 0 1px; }
+footer p { margin: 4px 0; }
+
+/* Pass / fail chips in result tables. */
+.chip { display: inline-block; font: 600 12px var(--sans); padding: 2px 9px; border-radius: 999px; }
+.chip.pass { background: var(--green-soft); color: var(--green); }
+.chip.fail { background: var(--red-soft); color: var(--red); }
+
+.cbtn.on:hover:not(:disabled) { color: var(--paper); filter: brightness(1.08); }

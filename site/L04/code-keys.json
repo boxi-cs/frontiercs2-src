@@ -1,0 +1,14 @@
+{
+  "passes": "def passes(",
+  "bbq": "W = 4  # bits per bitmap row",
+  "dequeue": "def dequeue_min(q):",
+  "period": "def period_ps(",
+  "opsps": "def ops_per_second(",
+  "ratios": "TREES = [\"2x4\"",
+  "simplex": "def simplex_max(",
+  "network": "CAP = {\"AB\": 12",
+  "search": "LEVELS = [0, 6, 18]",
+  "count": "from math import comb",
+  "simulate": "ROUND, GPUS = 120, 4",
+  "policies": "def fifo("
+}

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FrontierCS 2 Course</title>
+  <meta name="description" content="A course on FrontierCS 2, the benchmark for computer-science R&D: 48 tasks from 13 fields, one lecture per field, with interactive notes and runnable models of each paper's idea.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/course.css">
+  <style>
+    /* Field colours, as on the task map at frontier-cs.org. */
+    :root { --f-blue: #1a73e8; --f-green: #188038; --f-orange: #e8710a; --f-purple: #9334e6; --f-red: #d93025; --f-grey: #5f6368; }
+
+    .hero-band { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
+    .hero-band::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(var(--line) 1px, transparent 1.2px); background-size: 22px 22px;
+      -webkit-mask-image: radial-gradient(ellipse 70% 90% at 80% 40%, #000 30%, transparent 75%);
+              mask-image: radial-gradient(ellipse 70% 90% at 80% 40%, #000 30%, transparent 75%);
+    }
+    .hub-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding-top: 64px; padding-bottom: 56px; }
+    .hub-hero h1 { font-size: clamp(36px, 5vw, 54px); margin: 16px 0 16px; line-height: 1.06; letter-spacing: -0.03em; }
+    .hub-hero h1 em { font-style: normal; color: var(--teal); }
+    .hub-hero .lead { font-size: 17px; color: var(--ink-2); margin: 0; max-width: 36em; }
+    .stamp { font: 500 12px var(--mono); color: var(--stone); }
+    .stamp::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--f-green); margin-right: 8px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--f-green) 22%, transparent); animation: blink 2.4s ease-in-out infinite; }
+    @keyframes blink { 50% { opacity: .35; } }
+    .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+
+    /* Terminal: always dark, in both themes. */
+    .term { background: #0e1117; color: #c9d1d9; border: 1px solid #262b33; border-radius: 12px; font: 13px/1.65 var(--mono); box-shadow: 0 24px 60px -24px rgba(11, 87, 208, .45); min-width: 0; }
+    .term-bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border-bottom: 1px solid #262b33; color: #6e7681; font-size: 12px; }
+    .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #30363d; }
+    .term-bar span { margin-left: 8px; }
+    .term pre { margin: 0; padding: 16px 18px 18px; min-height: 290px; white-space: pre-wrap; word-break: break-word; background: none; border: 0; color: inherit; font: inherit; }
+    .term .p { color: #7ee787; } .term .c { color: #6e7681; } .term .k { color: #79c0ff; } .term .ok { color: #7ee787; } .term .w { color: #ffa657; }
+    .term .cur { display: inline-block; width: 7px; height: 1.1em; background: #c9d1d9; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+
+    .facts { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 12px; margin: 40px 0 0; background: var(--card); overflow: hidden; }
+    .facts div { padding: 18px 20px; font: 500 12px var(--mono); color: var(--stone); text-transform: uppercase; letter-spacing: .06em; }
+    .facts div + div { border-left: 1px solid var(--line); }
+    .facts b { display: block; font: 600 34px/1.1 var(--sans); color: var(--ink); letter-spacing: -0.02em; margin-bottom: 4px; text-transform: none; }
+
+    .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 56px 0 16px; }
+    .sec-h h2 { margin: 0; font-size: 24px; }
+    .sec-h span { font: 500 12px var(--mono); color: var(--stone); }
+
+    /* Field map: one tile per field, width set by its task count. */
+    .fmap { display: flex; flex-direction: column; gap: 6px; }
+    .frow { display: flex; gap: 6px; height: 150px; }
+    .tile { position: relative; flex: var(--n) 1 0; min-width: 0; border-radius: 8px; overflow: hidden; background: var(--c); color: #fff; text-decoration: none; transition: filter .15s, transform .15s; }
+    .tile:hover { filter: brightness(1.1) saturate(1.05); transform: translateY(-2px); }
+    .tile svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; }
+    .tile b { position: absolute; left: 8px; top: 8px; font: 600 12px var(--sans); background: rgba(255,255,255,.95); color: var(--c); padding: 3px 9px; border-radius: 999px; white-space: nowrap; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; }
+    .tile b small { font: 600 11px var(--mono); opacity: .75; margin-inline-start: 5px; }
+    .tile.narrow b { left: 50%; top: auto; bottom: 8px; transform: translateX(-50%) rotate(180deg); writing-mode: vertical-rl; padding: 9px 3px; max-height: calc(100% - 16px); max-width: none; }
+
+    .part { display: flex; align-items: center; gap: 8px; font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--stone); margin: 40px 0 14px; }
+    .part::before { content: ""; width: 8px; height: 8px; background: var(--teal); }
+    .part::after { content: ""; flex: 1; height: 1px; background: var(--line); margin-left: 8px; }
+    .lec { gap: 6px; position: relative; overflow: hidden; scroll-margin-top: 90px; }
+    .lec::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--c, var(--teal)); }
+    .lec:hover { transform: none; }
+    .lec:target { outline: 2px solid var(--c, var(--teal)); outline-offset: 2px; }
+    .lec .num { font: 600 13px var(--mono); color: var(--c, var(--teal)); }
+    .lec h3 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .lec h3 small { font: 500 12px var(--mono); color: var(--stone); white-space: nowrap; }
+    .lec .tasks { font-size: 13px; color: var(--ink-2); flex: 1; }
+    .lec .notes { align-self: flex-start; margin-top: 8px; font-size: 13px; font-weight: 600; text-decoration: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--stone); }
+    .lec.ready { border-color: color-mix(in srgb, var(--c, var(--teal)) 55%, var(--line)); }
+    .lec.ready .notes { color: #fff; background: var(--teal); border-color: var(--teal); }
+    :root[data-theme="dark"] .lec.ready .notes { color: #062e6f; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lec.ready .notes { color: #062e6f; } }
+    .lec .msg-soon { font-size: 12px; color: var(--stone); }
+
+    @media (max-width: 900px) {
+      .hub-hero { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 40px; padding-bottom: 40px; }
+      .term pre { min-height: 0; font-size: 12px; }
+    }
+    @media (max-width: 640px) {
+      .facts { grid-template-columns: repeat(2, 1fr); }
+      .facts div:nth-child(3) { border-left: 0; }
+      .facts div:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .facts b { font-size: 28px; }
+      .frow { flex-wrap: wrap; height: auto; }
+      .tile { flex: 1 1 calc(33% - 6px); height: 96px; }
+      .sec-h span.wide-only { display: none; }
+      .tile.narrow b { writing-mode: horizontal-tb; transform: none; left: 8px; top: 8px; bottom: auto; padding: 3px 9px; max-height: none; max-width: calc(100% - 16px); }
+    }
+    @media (prefers-reduced-motion: reduce) { .stamp::before, .term .cur { animation: none; } .tile { transition: none; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">FCS</span><span class="brand-text"><b>FrontierCS 2 · Course</b><span>Computer-science R&amp;D, one field at a time</span></span></a>
+    <span style="flex:1"></span>
+    <a class="btn" style="padding:6px 14px;font-size:13px" href="https://frontier-cs.org/" target="_blank" rel="noopener">Benchmark ↗</a>
+    <button class="iconbtn" id="theme" title="Light / dark">☾</button>
+  </header>
+  <section class="hero-band">
+    <div class="wrap hub-hero">
+      <div>
+        <span class="stamp">Results as of October 26, 2026</span>
+        <h1>Computer Science R&amp;D, <em>task by task</em></h1>
+        <p class="lead">FrontierCS 2 asks AI agents to do CS research. Each task removes the key contribution of a paper from the code released with it, and an agent must write it back and beat the authors' version on every metric. This course takes the 48 tasks one field at a time: what each paper found, what the task removed, how it is judged, and what the agents wrote. Every idea comes with a small model you can run in your browser.</p>
+        <div class="cta">
+          <a class="btn primary" href="L00/index.html">Start with L00 →</a>
+          <a class="btn" href="#fields">Browse the fields</a>
+        </div>
+      </div>
+      <div class="term" aria-label="How a task works, as a terminal session">
+        <div class="term-bar"><i></i><i></i><i></i><span>how a task works · illustration</span></div>
+        <pre id="term"></pre>
+      </div>
+    </div>
+  </section>
+  <main class="wrap">
+    <div class="facts">
+      <div><b>48</b>tasks</div>
+      <div><b>13</b>fields</div>
+      <div><b>14</b>lectures</div>
+      <div><b>16</b>models ranked</div>
+    </div>
+    <div class="sec-h" id="fields"><h2>Fields</h2><span class="wide-only">tile width = number of tasks</span></div>
+    <div class="fmap" id="fmap"></div>
+    <div class="sec-h"><h2>Lectures</h2><span>L00 – L13</span></div>
+    <div id="lectures"></div>
+    <p class="meta" style="margin:40px 0">Lectures marked "Open lecture" are out; the others are being written. Results on each page are as of the date it states.</p>
+  </main>
+  <footer></footer>
+  <script src="assets/course.js"></script>
+  <script>
+    renderFooter("");
+    // [number, field, tasks in that field]. Task names as on frontier-cs.org.
+    const LECTURES = [
+      ["Start here", [
+        [0, "Introduction", ["How a task is built", "What the agent sees", "What counts as a pass", "How scores are computed"]],
+      ]],
+      ["Systems", [
+        [1, "MLSys", ["SVG-EAR", "Continuum", "FlashLib KNN", "FlashLib DBSCAN", "FlashLib K-Means", "FlashLib IVF-PQ"]],
+        [2, "HPC", ["RegionsSort", "Parallel DBSCAN", "Hygra", "ParButterfly"]],
+        [3, "Architecture", ["RUNLTS", "KAMI", "Clusterwise SpGEMM"]],
+        [4, "Network", ["BBQ", "MetaOpt", "Shockwave"]],
+        [8, "Database", ["Yannakakis", "Spectrum", "FARGO Query Stopping", "Seer", "SCOPE", "ScaleGPM", "JoinBoost", "FARGO Query Core", "Persistent Treap"]],
+      ]],
+      ["Theory and algorithms", [
+        [5, "Theory", ["Binary Fuse Filter"]],
+        [6, "Bioinformatics", ["Edlib"]],
+        [11, "Cryptography", ["Structured LWE", "CKKS Noise", "QuarterPIR"]],
+      ]],
+      ["Learning", [
+        [7, "Machine Learning", ["KV Compaction", "RAGEN", "Flow-OPD", "Representation Fréchet Loss", "Nano World Model", "DyT", "LeJEPA", "DeTok", "Polar Express"]],
+        [13, "Robotics", ["Diffusion Policy", "MuJoCo Playground"]],
+      ]],
+      ["Languages, software and security", [
+        [9, "Programming Languages", ["Egg", "BABBLE", "Polygon", "Glenside"]],
+        [10, "Software Engineering", ["CREST"]],
+        [12, "Security", ["LRR", "Progent"]],
+      ]],
+    ];
+    const pad = (n) => String(n).padStart(2, "0");
+    const COLOR = { 0: "var(--teal)", 1: "var(--f-blue)", 2: "var(--f-blue)", 3: "var(--f-blue)", 4: "var(--f-blue)", 5: "var(--f-blue)", 6: "var(--f-blue)",
+      7: "var(--f-green)", 8: "var(--f-orange)", 9: "var(--f-purple)", 10: "var(--f-grey)", 11: "var(--f-red)", 12: "var(--f-red)", 13: "var(--f-grey)" };
+    document.getElementById("lectures").innerHTML = LECTURES.map(([part, list]) =>
+      `<div class="part">${part}</div><div class="chapters">` + list.map(([n, t, tasks]) =>
+        `<div class="card chapcard lec soon" id="L${pad(n)}" style="--c:${COLOR[n]}">
+          <span class="num">L${pad(n)}</span>
+          <h3>${t}${n ? `<small>${tasks.length} task${tasks.length > 1 ? "s" : ""}</small>` : ""}</h3>
+          <p class="tasks">${tasks.join(" · ")}</p>
+          <a class="notes" href="L${pad(n)}/index.html">In preparation</a>
+        </div>`).join("") + "</div>").join("");
+
+    // Field map: two rows, tiles as wide as their task counts, each with a line-art pattern.
+    const fields = Object.fromEntries(LECTURES.flatMap(([, list]) => list).map(([n, t, tasks]) => [n, [t, tasks.length]]));
+    const ROWS = [[1, 2, 3, 4, 8], [7, 13, 5, 6, 11, 12, 9, 10]];
+    const SHORT = { 6: "Bio", 11: "Crypto", 9: "Prog. Languages", 10: "Software Eng.", 7: "Machine Learning" };
+    function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+    function pattern(n) {
+      const r = rng(n * 7919 + 13), W = 480, H = 150, k = n % 4;
+      let g = "";
+      if (k === 0) {        // graph: nodes and edges
+        const pts = Array.from({ length: 26 }, () => [r() * W, 30 + r() * (H - 30)]);
+        pts.forEach(([x, y], i) => { const [u, v] = pts[(i * 5 + 3) % pts.length]; g += `<line x1="${x}" y1="${y}" x2="${u}" y2="${v}"/>`; });
+        pts.forEach(([x, y]) => { g += `<circle cx="${x}" cy="${y}" r="3.5" fill="#fff"/>`; });
+      } else if (k === 1) { // bars
+        for (let x = 8; x < W; x += 14) { const h = 20 + r() * 90; g += `<rect x="${x}" y="${H - h}" width="8" height="${h}"/>`; }
+      } else if (k === 2) { // waves
+        for (let j = 0; j < 6; j++) { const y0 = 40 + j * 18, a = 6 + r() * 12, f = 0.03 + r() * 0.05; let d = `M0 ${y0}`; for (let x = 0; x <= W; x += 6) d += ` L${x} ${(y0 + a * Math.sin(x * f + j)).toFixed(1)}`; g += `<path d="${d}"/>`; }
+      } else {              // grid of cells
+        for (let y = 34; y < H; y += 16) for (let x = 6; x < W; x += 16) if (r() < 0.55) g += `<rect x="${x}" y="${y}" width="11" height="11" ${r() < 0.3 ? 'fill="#fff"' : ""}/>`;
+      }
+      return `<svg aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="1.4">${g}</g></svg>`;
+    }
+    document.getElementById("fmap").innerHTML = ROWS.map((row) => `<div class="frow">` + row.map((n) => {
+      const [t, count] = fields[n];
+      return `<a class="tile${count <= 2 ? " narrow" : ""}" href="#L${pad(n)}" style="--n:${count};--c:${COLOR[n]}" title="L${pad(n)} ${t}: ${count} task${count > 1 ? "s" : ""}">
+        ${pattern(n)}<b>${SHORT[n] || t}<small>${count}</small></b></a>`;
+    }).join("") + `</div>`).join("");
+
+    // Terminal: types out the life of one task. An illustration, not a real tool.
+    const TERM = [
+      ["p", "$ ", "k", "open task", "", "  network/bbq"],
+      ["c", "# paper's code, key contribution cut out"],
+      ["", "  src/ ......................... ", "w", "1 function stubbed"],
+      ["p", "$ ", "k", "run agent", "", "  --task network/bbq"],
+      ["", "  reading the code and the task statement"],
+      ["", "  writing the missing part ...... ", "ok", "done"],
+      ["p", "$ ", "k", "judge", "", "  on hidden workloads"],
+      ["", "  metric A   agent vs paper ..... ", "ok", "better ✓"],
+      ["", "  metric B   agent vs paper ..... ", "ok", "better ✓"],
+      ["", "  metric C   agent vs paper ..... ", "w", "worse  ✗"],
+      ["c", "# a pass needs every metric beaten"],
+      ["", "  result ....................... ", "w", "FAIL"],
+    ];
+    const termEl = document.getElementById("term");
+    const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const lineHTML = (L) => { let h = ""; for (let i = 0; i < L.length; i += 2) h += L[i] ? `<span class="${L[i]}">${esc(L[i + 1])}</span>` : esc(L[i + 1]); return h; };
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      termEl.innerHTML = TERM.map(lineHTML).join("\n");
+    } else {
+      let li = 0, ci = 0, done = [];
+      const tick = () => {
+        if (li >= TERM.length) { setTimeout(() => { li = 0; ci = 0; done = []; tick(); }, 4200); return; }
+        const L = TERM[li], full = L.filter((_, i) => i % 2).join("");
+        const typed = L[0] === "p";
+        ci = typed ? ci + 1 : full.length;
+        let left = ci, partial = [];
+        for (let i = 0; i < L.length; i += 2) { const t = L[i + 1].slice(0, Math.max(0, left)); left -= L[i + 1].length; partial.push(L[i], t); }
+        termEl.innerHTML = done.join("\n") + (done.length ? "\n" : "") + lineHTML(partial) + `<span class="cur"></span>`;
+        if (ci >= full.length) { done.push(lineHTML(L)); li++; ci = 0; setTimeout(tick, typed ? 380 : 240); }
+        else setTimeout(tick, 34);
+      };
+      tick();
+    }
+    // A lecture is out when its folder has an index.html. Over file:// every link stays live.
+    const local = location.protocol === "file:";
+    document.querySelectorAll(".lec").forEach((card) => {
+      const link = card.querySelector(".notes");
+      const ready = () => { card.classList.replace("soon", "ready"); link.textContent = "Open lecture →"; };
+      link.addEventListener("click", (e) => {
+        if (!card.classList.contains("soon")) return;
+        e.preventDefault();
+        if (!card.querySelector(".msg-soon")) link.insertAdjacentHTML("afterend", `<span class="msg-soon">This lecture is still being written.</span>`);
+      });
+      if (local) return ready();
+      fetch(link.getAttribute("href"), { method: "HEAD" }).then((r) => { if (r.ok) ready(); }).catch(() => {});
+    });
+    const themeBtn = document.getElementById("theme");
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+      const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      themeBtn.textContent = dark ? "☀" : "☾";
+    }
+    try { applyTheme(localStorage.getItem("fcs2-theme")); } catch { applyTheme(null); }
+    themeBtn.onclick = () => {
+      const cur = document.documentElement.dataset.theme;
+      const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const t = dark ? "light" : "dark";
+      applyTheme(t);
+      try { localStorage.setItem("fcs2-theme", t); } catch { /* storage unavailable */ }
+    };
+  </script>
+</body>
+</html>

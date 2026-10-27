@@ -1,0 +1,30 @@
+/* L00 demos: task anatomy, FCI fit, budget runs. */
+.anat { display: grid; gap: 6px; }
+.anat-step { display: flex; gap: 12px; align-items: flex-start; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.anat-step b { display: block; font-size: 15px; }
+.anat-step small { display: block; font-size: 13px; color: var(--ink-2); }
+.anat-n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--mono); background: var(--card-2); color: var(--stone); }
+.anat-step.done .anat-n { background: var(--teal-soft); color: var(--teal); }
+.anat-step.on { border-color: var(--teal); background: var(--teal-soft); }
+.anat-step.on .anat-n { background: var(--teal); color: var(--paper); }
+.anat-step:not(.on):not(.done) small { display: none; }
+table.fit { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.fit th, table.fit td { padding: 4px; text-align: center; border-bottom: 1px solid var(--line); }
+table.fit th small { display: block; font: 500 10px var(--mono); color: var(--stone); }
+table.fit tr > th:first-child { text-align: left; white-space: nowrap; }
+.fit-cell { width: 100%; min-width: 40px; padding: 5px 0; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; font: 600 11px var(--sans); }
+.fit-cell.p { background: var(--green-soft); color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
+.fit-cell.m { background: var(--paper-2); color: var(--stone); }
+.fit-bars { margin-top: 14px; }
+.scale { position: relative; height: 62px; margin: 0 22px; border-top: 0; background: linear-gradient(var(--line), var(--line)) 0 31px / 100% 1px no-repeat; }
+.scale .dot { position: absolute; transform: translateX(-50%); font: 600 11px var(--mono); padding: 1px 6px; border-radius: 999px; white-space: nowrap; transition: left 0.3s; }
+.scale .dot.model { top: 4px; background: var(--teal); color: var(--paper); }
+.scale .dot.task { top: 38px; background: var(--card-2); color: var(--ink-2); }
+.runs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.run { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.run b { display: block; }
+.run small { display: block; color: var(--stone); font-size: 11px; }
+.run.yes { border-color: var(--green); background: var(--green-soft); }
+.run.no { background: var(--paper-2); }
+.run.cut { opacity: 0.55; border-style: dashed; }
+.scale { margin: 0 48px; } .scale .dot { font-size: 10px; }

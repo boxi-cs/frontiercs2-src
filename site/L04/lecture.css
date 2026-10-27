@@ -1,0 +1,40 @@
+/* L04 demos: BBQ tree, MetaOpt network, GPU schedule. */
+.bq { display: grid; gap: 12px; }
+.bq-level { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; }
+.bq-name { font: 600 12px var(--sans); color: var(--ink-2); }
+.bq-rows { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.bq-row { display: flex; gap: 3px; }
+.bq-level:first-child .bq-row { max-width: 50%; }
+.bq-cell {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 3px 0 2px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.bq-cell b { font: 600 15px var(--mono); color: var(--stone); }
+.bq-cell small { font: 500 11px var(--mono); color: var(--stone); }
+.bq-cell i { font: normal 10px var(--sans); color: var(--stone); }
+.bq-cell.one { background: var(--teal-soft); border-color: var(--teal); }
+.bq-cell.one b { color: var(--teal); }
+.bq-cell.hit { outline: 2px solid var(--amber); outline-offset: 1px; }
+.bq-key { margin: 0; font-size: 12px; color: var(--stone); }
+.mo-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+.mo-pairs { display: grid; gap: 6px; }
+.mo-pairs > small { color: var(--stone); font-size: 11px; }
+.mo-pair { display: flex; align-items: center; gap: 6px; }
+.mo-pair b { width: 44px; font-size: 13px; }
+.mo-pair .cbtn { min-width: 42px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.sched-table table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.sched-table th, .sched-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.sched-table td.win { color: var(--green); font-weight: 600; }
+.sched-table tr.cur td { background: var(--teal-soft); }
+@media (max-width: 600px) {
+  .mo-grid { grid-template-columns: minmax(0, 1fr); }
+  .bq-level { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .bq-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bq-level:first-child .bq-row { max-width: 100%; }
+  .sched-table { overflow-x: auto; }
+}
+.hero-demo .bq-rows, .chap-hero .bq-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hero-demo .bq-key { display: none; }

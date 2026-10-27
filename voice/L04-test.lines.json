@@ -1,0 +1,8 @@
+{
+  "_note": "A 30-second voice test for Lecture 4. 'text' is the subtitle; 'say' is what the TTS reads.",
+  "en": [
+    {"shot": "t1", "text": "This is Lecture 4 of the FrontierCS 2 course: Network.", "say": "This is Lecture four of the Frontier C S two course: Network."},
+    {"shot": "t2", "text": "Each task removes the key idea of a paper from its released code. An agent has five hours to write it back, and it passes only if it beats the authors' code on every metric of every hidden workload."},
+    {"shot": "t3", "text": "We start with BBQ, a priority queue built as a circuit. Take sixteen priorities, zero to fifteen, with zero the best.", "say": "We start with B B Q, a priority queue built as a circuit. Take sixteen priorities, zero to fifteen, with zero the best."}
+  ]
+}

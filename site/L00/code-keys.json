@@ -1,0 +1,8 @@
+{
+  "fields": "FIELDS = {",
+  "run": "RUN = [",
+  "check": "def check(",
+  "passed": "PASSED = {",
+  "fit": "from math import exp",
+  "scaling": "RUNS = ["
+}
