@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L01-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const CASE = "https://frontier-cs.org/blog/svg-ear-measured-error/";
@@ -28,7 +31,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to route one query by hand?",
   minutes: "About 80 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L01-1.mp4": "Part 1 of 4 · SVG-EAR: estimating what you skip · 4 min · narrated by Boxi Yu",
+    "media/L01-2.mp4": "Part 2 of 4 · Continuum: keeping the cache between turns · 3 min · narrated by Boxi Yu",
+    "media/L01-3.mp4": "Part 3 of 4 · FlashLib: k-NN and k-means · 3 min · narrated by Boxi Yu",
+    "media/L01-4.mp4": "Part 4 of 4 · FlashLib: DBSCAN and IVF-PQ · 3 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -39,6 +48,7 @@ const CHAPTERS = [
     tags: ["sparse attention", "clustering", "centroid estimate", "error-aware routing"],
     hero: "code:attn", heroCaption: "The case study's example: one query, four keys",
     sections: [
+      video(1, "SVG-EAR: estimating what you skip", "Part 1 of 4 of this lecture's video: sVG-EAR: estimating what you skip."),
       { id: "idea", title: "Attention is the cost", html: `
         <p>A video diffusion model makes a clip from noise in 50 steps, and each step runs a transformer over the clip's tokens. A 720p clip of 81 frames has 75,600 of them. In attention, every token looks at every other token, and that dominates the cost. <b>Sparse VideoGen2</b> clusters similar tokens and computes attention only for the cluster pairs that matter. <b>SVG-EAR</b> (ECCV 2026) also estimates the pairs it skips, from cluster averages, and picks the pairs to compute by the error that skipping would cause.</p>` },
       { id: "toy", title: "One query, four keys", html: `
@@ -97,6 +107,7 @@ const CHAPTERS = [
     tags: ["vLLM", "KV cache", "time-to-live", "tail latency"],
     hero: "serveMini", heroCaption: "The same six conversations, vLLM and Continuum in turn.",
     sections: [
+      video(2, "Continuum: keeping the cache between turns", "Part 2 of 4 of this lecture's video: continuum: keeping the cache between turns."),
       { id: "idea", title: "Multi-turn agents", html: `
         <p>An AI agent calls a model in many turns, with a tool call between turns. vLLM keeps each request's <b>KV cache</b>, the keys and values of its context, only while the request runs; when it ends the blocks may be evicted, so after a tool call the whole context may be computed again. Other conversations also cut in between turns. <b>Continuum</b> (arXiv 2025) holds a conversation's cache for a <b>time-to-live</b> (TTL) after a tool call, and serves whole conversations first come, first served.</p>` },
       { id: "server", title: "A small server", html: `
@@ -129,6 +140,7 @@ const CHAPTERS = [
     tags: ["k-NN", "k-means", "tiling", "running minimum", "L(S)"],
     hero: "code:bound", heroCaption: "Keep two per group, bound the k-th, rescore few",
     sections: [
+      video(3, "FlashLib: k-NN and k-means", "Part 3 of 4 of this lecture's video: flashLib: k-NN and k-means."),
       { id: "flash", title: "Flash magic for classical operators", html: `
         <p><b>FlashLib</b> applies the ideas behind fast GPU attention kernels to classical machine-learning operators. The first of its principles is to rewrite an operator into a mathematically equivalent form that suits the GPU: never write a large intermediate table to memory, keep running minima in registers, and split <code>‖x − y‖² = ‖x‖² + ‖y‖² − 2⟨x, y⟩</code> so that the costly part becomes a matrix product on tensor cores. (<a href="https://flashml-org.github.io/" target="_blank" rel="noopener">FlashLib blog ↗</a>)</p>` },
       { id: "knn", title: "k-nearest neighbors", html: `
@@ -171,6 +183,7 @@ const CHAPTERS = [
     tags: ["DBSCAN", "union-find", "ARI", "IVF-PQ", "product quantization"],
     hero: "dbscanMini", heroCaption: "The same 150 points, as eps grows.",
     sections: [
+      video(4, "FlashLib: DBSCAN and IVF-PQ", "Part 4 of 4 of this lecture's video: flashLib: DBSCAN and IVF-PQ."),
       { id: "dbscan", title: "DBSCAN", html: `
         <p>DBSCAN groups points by density. A point with at least <code>min_samples</code> points within distance <code>eps</code>, itself included, is a <b>core</b> point. Core points within <code>eps</code> of each other link into a cluster. A non-core point next to a core point is a <b>border</b> point and joins the smallest neighboring core label; the rest are <b>noise</b>. Union-find links the core points.</p>
         ${code("dbscan")}
