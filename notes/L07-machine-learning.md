@@ -1098,7 +1098,7 @@ CUDA graphs and replay them, which removes the cost of launching hundreds of sma
 counts only the training step, but the pass rule also checks inference time on every workload.
 :::
 
-# Polar Express: the easiest task
+# Polar Express: the second-easiest task
 
 A matrix's **polar factor** keeps its singular vectors but sets every singular value to 1. The Muon
 optimizer needs it at every step, where an SVD is too slow. An odd polynomial `p(x) = a x + b x³ +

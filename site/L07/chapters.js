@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L07-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 const full = (slug) => `<a href="${TASK}${slug}" target="_blank" rel="noopener">Full table ↗</a>`;
@@ -28,7 +31,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to compact one attention head?",
   minutes: "About 85 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L07-1.mp4": "Part 1 of 4 · KV Compaction: the hardest task · 3 min · narrated by Boxi Yu",
+    "media/L07-2.mp4": "Part 2 of 4 · RAGEN and Flow-OPD: building the batches · 3 min · narrated by Boxi Yu",
+    "media/L07-3.mp4": "Part 3 of 4 · Populations and a world model: Fréchet loss, LeJEPA, NanoWM · 3 min · narrated by Boxi Yu",
+    "media/L07-4.mp4": "Part 4 of 4 · Short runs and an easy task: DeTok, DyT, Polar Express · 3 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -39,6 +48,7 @@ const CHAPTERS = [
     tags: ["KV cache", "attention mass", "nonnegative least squares", "least squares"],
     hero: "code:kvhead", heroCaption: "One head: template keys, 48 article keys, sample and test queries",
     sections: [
+      video(1, "KV Compaction: the hardest task", "Part 1 of 4 of this lecture's video: kV Compaction: the hardest task."),
       { id: "idea", title: "The cache grows with the document", html: `
         <p>A language model that reads a long document keeps a <b>KV cache</b>: for every token, in every layer and head, a key and a value. Later tokens attend to these keys. The cache grows with the document. <b>Attention Matching</b> (<em>Fast KV Compaction via Attention Matching</em>, ICML 2026) shrinks it one head at a time. It keeps a few keys, gives each kept key a bias so that together they draw the attention the dropped keys drew, and fits new values by least squares so that attention returns the same output for a set of sample queries. It needs no training, and it runs in seconds.</p>` },
       { id: "toy", title: "One head, three steps", html: `
@@ -94,6 +104,7 @@ const CHAPTERS = [
     tags: ["PPO", "loss mask", "group normalization", "flow matching", "on-policy distillation", "OCR"],
     hero: "code:ragen", heroCaption: "Parse, pack, place the reward, normalize in a group",
     sections: [
+      video(2, "RAGEN and Flow-OPD: building the batches", "Part 2 of 4 of this lecture's video: rAGEN and Flow-OPD: building the batches."),
       { id: "ragen", title: "RAGEN: games into rows", html: `
         <p><b>RAGEN</b> (arXiv 2025) trains language models to act over many turns. The model sees a puzzle, replies with moves, gets the next view and a reward, and so on. Training needs each game packed into one token row, with a mask that marks what the model wrote (the loss is taken only there) and the reward on the right token. Four games from the same start form a group, and each game's reward is compared with its group's.</p>
         ${code("ragen")}
@@ -135,6 +146,7 @@ const CHAPTERS = [
     tags: ["Fréchet distance", "feature queue", "SIGReg", "whitening", "identifiability"],
     hero: "code:queue", heroCaption: "A ring buffer of past features as the population",
     sections: [
+      video(3, "Populations and a world model: Fréchet loss, LeJEPA, NanoWM", "Part 3 of 4 of this lecture's video: populations and a world model: Fréchet loss, LeJEPA, NanoWM."),
       { id: "frechet", title: "Representation Fréchet Loss: a queue that keeps gradients", html: `
         <p>The <b>Fréchet distance</b> compares two sets of images by the mean and covariance of their features; FID is the Fréchet distance in Inception features. <em>Representation Fréchet Loss for Visual Generation</em> (arXiv 2026) turns it into a training loss for image generators. The statistics must cover many generated images, but only the current batch has a computation graph. So a <b>feature queue</b> keeps past features, or running sums of them, without gradients, and mixes in each new batch with its gradient.</p>
         <p>Our generator has one feature, <code>x = m + s·z</code>, and the target is a standard normal, so the Fréchet distance is <code>(μ − 0)² + (σ − 1)²</code>. A ring buffer of <code>window</code> past features is the population. The gradient flows into the batch's rows only. We scale each step by <code>window / batch</code>, so every window takes steps of the same size and only the lag differs.</p>
@@ -203,6 +215,7 @@ const CHAPTERS = [
     tags: ["image tokenizer", "latent denoising", "masking", "LayerNorm", "Dynamic Tanh"],
     hero: "code:dyt", heroCaption: "LayerNorm and DyT on one token with an outlier",
     sections: [
+      video(4, "Short runs and an easy task: DeTok, DyT, Polar Express", "Part 4 of 4 of this lecture's video: short runs and an easy task: DeTok, DyT, Polar Express."),
       { id: "detok", title: "DeTok: how much to corrupt", html: `
         <p>An image tokenizer turns a photo into latent tokens and decodes them back. <b>DeTok</b> (<em>Latent Denoising Makes Good Tokenizers</em>, ICLR 2026) trains the tokenizer as a denoiser: it hides many image patches and mixes noise into the latents (<code>(1 − τ) x + τ γ ε</code>), and the decoder must still rebuild the clean image. The paper's aim is a tokenizer that a generative model can use well.</p>
         <p>Our tokenizer's "images" are 16 smooth tokens. Our decoder rebuilds each token from itself, its neighbors, a hidden flag and a constant, fitted by least squares on corrupted copies. We test it on clean tokens, as the task does, and on noisy ones.</p>
@@ -226,7 +239,7 @@ const CHAPTERS = [
     takeaways: ["A short run leaves the race to speed.", "The score's ceiling can hide a failed check.", "Match the reference bit for bit, then go faster."],
   },
   {
-    slug: "7-polar-express", nav: "Polar Express", title: "Polar Express: The Easiest Task",
+    slug: "7-polar-express", nav: "Polar Express", title: "Polar Express: The Second-Easiest Task",
     subtitle: "A schedule of best polynomials beats one fixed polynomial",
     abstract: "The polar factor of a matrix sets every singular value to 1. Polar Express gets there with a few odd polynomials, each the best one for the interval the step before leaves. 14 of 16 models passed; it is the second easiest task in the benchmark, in the same field as the hardest.",
     tags: ["polar factor", "Muon", "Newton–Schulz", "minimax polynomial", "Remez"],
