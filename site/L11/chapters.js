@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L11-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 
@@ -27,7 +30,12 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to find a secret by brute force?",
   minutes: "About 60 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L11-1.mp4": "Part 1 of 3 · Structured LWE: find the secret · 4 min · narrated by Boxi Yu",
+    "media/L11-2.mp4": "Part 2 of 3 · CKKS Noise: predicting precision · 4 min · narrated by Boxi Yu",
+    "media/L11-3.mp4": "Part 3 of 3 · QuarterPIR: reading privately with fewer bytes · 5 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -38,6 +46,7 @@ const CHAPTERS = [
     tags: ["learning with errors", "sparse secret", "lattice reduction", "FDI 97.4"],
     hero: "code:valid", heroCaption: "The task's acceptance check, in small",
     sections: [
+      video(1, "Structured LWE: find the secret", "Part 1 of 3 of this lecture's video: structured LWE: find the secret."),
       { id: "idea", title: "Learning with errors", html: `
         <p><b>Learning with errors</b> (LWE) is the hard problem beneath much post-quantum cryptography. Given a public matrix <code>A</code> and a vector <code>b = A s + e (mod q)</code>, find the secret <code>s</code>. Both <code>s</code> and the error <code>e</code> are small. Without the error, Gaussian elimination would find <code>s</code> at once; the error is what makes it hard. Extra <b>structure</b>, such as a sparse matrix or a secret with few nonzero entries, can open shortcuts. <em>A Systematic Study of Sparse LWE</em> (CRYPTO 2024) studies these structured variants.</p>` },
       { id: "instance", title: "A small instance", html: `
@@ -72,6 +81,7 @@ const CHAPTERS = [
     tags: ["homomorphic encryption", "precision in bits", "rescaling", "noise estimator"],
     hero: "ckksMini", heroCaption: "0 to 5 squarings: each one costs about a bit.",
     sections: [
+      video(2, "CKKS Noise: predicting precision", "Part 2 of 3 of this lecture's video: cKKS Noise: predicting precision."),
       { id: "idea", title: "Approximate encrypted computation", html: `
         <p><b>Homomorphic encryption</b> lets a server compute on encrypted data. <b>CKKS</b> computes on encrypted vectors of real or complex numbers, thousands of <em>slots</em> at once, and its results are approximate: every operation adds a little noise. How many correct bits survive a long computation? The paper <em>Accurate and Composable Noise Estimates for CKKS</em> (IACR CiC 2025) answers with an <b>estimator</b> that replays the computation on clear values, adding modeled noise at each step, instead of running it encrypted.</p>` },
       { id: "bits", title: "Precision in bits", html: `
@@ -106,6 +116,7 @@ const CHAPTERS = [
     tags: ["private information retrieval", "hint", "parity", "XOR"],
     hero: "pir", heroCaption: "Click an entry of the hint to read it.",
     sections: [
+      video(3, "QuarterPIR: reading privately with fewer bytes", "Part 3 of 3 of this lecture's video: quarterPIR: reading privately with fewer bytes."),
       { id: "idea", title: "Private information retrieval", html: `
         <p><b>Private information retrieval</b> (PIR) lets a client read one database entry without the server learning which. <b>QuarterPIR</b> (Ghoshal, Zhou and Shi, EUROCRYPT 2024) needs no public-key cryptography. The client streams the database once and keeps <b>hints</b>; each later lookup then needs one short request and reply.</p>` },
       { id: "hint", title: "A hint", html: `
