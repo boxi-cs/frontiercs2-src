@@ -7,6 +7,9 @@ const callout = (kind, label, body) => `<div class="callout ${kind}"><b>${label}
 const predict = (q, a) => callout("predict", "PREDICT", `<p>${q}</p><details class="reveal"><summary>Show the answer</summary>${a}</details>`);
 const out = (name) => codeBlock(OUT[name], "out");
 const code = (name) => codeBlock(CODE[name]) + (OUT[name] ? out(name) : "");
+const video = (k, title, about) => ({ id: "video", title: `Watch: ${title}`, html: `
+        <p>${about}</p>
+        <div class="card video" data-video="media/L02-${k}.mp4"></div>` });
 const pass = '<span class="chip pass">Pass</span>', fail = '<span class="chip fail">Fail</span>';
 const TASK = "https://frontier-cs.org/task/#";
 
@@ -27,7 +30,13 @@ const LECTURE = {
   ],
   ctaTitle: "Ready to plan the swaps of a radix sort?",
   minutes: "About 70 minutes",
-  videos: {},
+  subtitles: ["en"],
+  videos: {
+    "media/L02-1.mp4": "Part 1 of 4 · RegionsSort: sorting in place · 4 min · narrated by Boxi Yu",
+    "media/L02-2.mp4": "Part 2 of 4 · Parallel DBSCAN: exact clusters on a grid · 3 min · narrated by Boxi Yu",
+    "media/L02-3.mp4": "Part 3 of 4 · Hygra: peeling a hypergraph · 3 min · narrated by Boxi Yu",
+    "media/L02-4.mp4": "Part 4 of 4 · ParButterfly: counting butterflies · 3 min · narrated by Boxi Yu",
+  },
 };
 
 const CHAPTERS = [
@@ -38,6 +47,7 @@ const CHAPTERS = [
     tags: ["radix sort", "in place", "regions graph", "FDI 60.5"],
     hero: "regionsAuto", heroCaption: "Each swap sends a range of keys home; a 2-cycle sends both sides home.",
     sections: [
+      video(1, "RegionsSort: sorting in place", "Part 1 of 4 of this lecture's video: regionsSort: sorting in place."),
       { id: "idea", title: "Radix sort, in place", html: `
         <p>A <b>radix sort</b> sorts integers digit by digit. A most-significant-digit sort puts every key in a <b>bucket</b> by its top digit (eight bits in the task, so 256 buckets), then sorts each bucket by the next digit. The fast parallel versions copy the keys into a second array, which doubles the memory. In place, each key must be <em>swapped</em> to its bucket, and the swaps depend on one another.</p>
         <p><b>Regions Sort</b> (Obeya, Kahssay, Fan and Shun, SPAA 2019) turns these dependences into a graph and finds swaps that can run in parallel. It needs only O(K log r log n) extra memory for K blocks, and it is <b>work-efficient</b>: O(n log r) work, as much as a serial radix sort.</p>` },
@@ -80,6 +90,7 @@ const CHAPTERS = [
     tags: ["DBSCAN", "grid", "union-find", "FDI 42.1"],
     hero: "dbscan", heroCaption: "Shaded cells hold core points. Move ε and watch the clusters and the test counts.",
     sections: [
+      video(2, "Parallel DBSCAN: exact clusters on a grid", "Part 2 of 4 of this lecture's video: parallel DBSCAN: exact clusters on a grid."),
       { id: "idea", title: "Density clustering", html: `
         <p><b>DBSCAN</b> finds clusters as dense regions. A point is <b>core</b> if at least <code>minPts</code> points, itself included, lie within distance ε. Two core points are in the same cluster when a chain of core points joins them, each step at most ε. A non-core point within ε of a core point is a <b>border</b> point; any other point is <b>noise</b>. Done naively, DBSCAN compares every pair of points: O(n²) work.</p>
         <p><em>Theoretically-Efficient and Practical Parallel DBSCAN</em> (Wang, Gu and Shun, SIGMOD 2020) gives exact parallel algorithms that are work-efficient in two dimensions and fast in higher ones.</p>` },
@@ -120,6 +131,7 @@ const CHAPTERS = [
     tags: ["hypergraph", "k-core", "peeling", "work-efficiency"],
     hero: "peel", heroCaption: "Peel one round at a time: each leaving vertex takes the level as its core number.",
     sections: [
+      video(3, "Hygra: peeling a hypergraph", "Part 3 of 4 of this lecture's video: hygra: peeling a hypergraph."),
       { id: "idea", title: "Core numbers of a hypergraph", html: `
         <p>A <b>hypergraph</b> lets one edge, a <b>hyperedge</b>, join any number of vertices. The <b>k-core</b> is what remains after repeatedly removing every vertex that lies in fewer than <code>k</code> hyperedges, and with it each hyperedge that loses a member. A vertex's <b>core number</b> is the largest <code>k</code> whose core still holds it: a measure of how deep inside the dense part it sits.</p>
         <p><em>Practical Parallel Hypergraph Algorithms</em> (Shun, PPoPP 2020) builds Hygra, a framework for parallel hypergraph algorithms, and gives it a new work-efficient algorithm for core numbers.</p>` },
@@ -160,6 +172,7 @@ const CHAPTERS = [
     tags: ["bipartite graph", "butterfly", "wedges", "FDI −11.2"],
     hero: "butterfly", heroCaption: "Same count in every order; the number of wedges changes.",
     sections: [
+      video(4, "ParButterfly: counting butterflies", "Part 4 of 4 of this lecture's video: parButterfly: counting butterflies."),
       { id: "idea", title: "Butterflies", html: `
         <p>A <b>bipartite graph</b> has two sides, and every edge joins the two: users and products, authors and papers. A <b>butterfly</b> is two vertices on each side joined by all four edges, the smallest dense pattern such a graph can have, much as a triangle is in an ordinary graph. <em>Parallel Algorithms for Butterfly Computations</em> (Shi and Shun, APOCS 2020) builds ParButterfly, a framework that counts and peels butterflies in parallel.</p>` },
       { id: "wedges", title: "Wedges and vertex orders", html: `
